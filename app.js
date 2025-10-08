@@ -127,16 +127,17 @@ function renderHome(){
       const card = document.createElement('button');
       card.className = 'card done';
       const pct = Math.min(100, Math.round((done/total)*100));
-      card.innerHTML = `
-        <div class="head">
-          <div class="badge">${s}</div>
-          <div>
-            <div class="title">${NAMES[s]}</div>
-            <div class="sub">${done}/${total} tamamlandı</div>
-          </div>
-        </div>
-        <div class="progress"><span style="width:${pct}%"></span></div>
-      `;
+card.innerHTML = `
+  <div class="head">
+    <div class="badge">${s}</div>
+    <div class="head-text">
+      <div class="title">${NAMES[s]}</div>
+      <div class="sub">${done}/${total} tamamlandı</div>
+    </div>
+  </div>
+  <div class="progress"><span style="width:${pct}%"></span></div>
+`;
+
       card.onclick = () => { ttsStop(); openSurah(s); };
       hero.appendChild(card);
     }
