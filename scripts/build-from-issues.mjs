@@ -1,5 +1,12 @@
 // Node 20+. Issues -> data/normalized.json (tekil + toplu). Hatalara dayanıklı.
 
+// KİMİN issue'ları işlenecek?
+const ALLOWED_AUTHORS = new Set([
+  'metinciris', // sen ekleyebilirsin yabancı ekleyemez
+  // 'baska-kullanici', // istersen ekle
+]);
+
+
 import { writeFileSync, mkdirSync } from "node:fs";
 import { Octokit } from "octokit";
 
