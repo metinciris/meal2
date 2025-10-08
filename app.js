@@ -1,8 +1,12 @@
 /**************** app.js — Manifest + Per-Sûre JSON, PWA, TTS, Tema ****************/
 
-/* Veri kaynakları */
-const MANIFEST_URL = './data/manifest.json';
-const SUREH_URL = (s) => `./data/surah/${s}.json`;
+/* ===== Dinamik URL yardımcıları ===== */
+function basePath(){ const p = location.pathname; return p.endsWith('/') ? p : p.replace(/[^/]+$/, ''); }
+function urlJoin(...segs){ return new URL(segs.join('/').replace(/\/+/g,'/'), location.origin).toString(); }
+
+const MANIFEST_URL   = urlJoin(basePath(), 'data/manifest.json');
+const SUREH_URL      = (s) => urlJoin(basePath(), `data/surah/${s}.json`);
+const NORMALIZED_URL = urlJoin(basePath(), 'data/normalized.json');
 
 /* Sûre adları ve âyet sayıları */
 const NAMES = [
@@ -36,12 +40,13 @@ function escapeHTML(s){
 }
 function formatDateTR(iso){
   try{
+    if (!iso) return '—';
     const d = new Date(iso);
     return d.toLocaleDateString('tr-TR', { day:'numeric', month:'long', year:'numeric', timeZone:'Europe/Istanbul' });
-  }catch{ return iso }
+  }catch{ return '—' }
 }
 
-/* Global durum (manifest + seçilen sûrenin verisi) */
+/* Global durum */
 let manifest = null;                   // { lastUpdated, progress: [{s,done,total}] }
 let lastUpdated = null;
 const surahCache = new Map();          // s → { sure, rows, lastUpdated }
@@ -53,7 +58,7 @@ const tts = {
   synth: typeof window !== 'undefined' ? window.speechSynthesis : null,
   voice: null,
   rate: 0.8,
-  queue: [],   // {id, text, el}
+  queue: [],
   idx: -1,
   playing: false,
   dict: { replacements: [] }
@@ -62,7 +67,6 @@ const tts = {
 /* ===================== BOOT ===================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // NAV & TTS kontrolleri
   $('#backBtn')?.addEventListener('click', () => { ttsStop(); return goHome(); });
   $('#ttsPlay')?.addEventListener('click', onTtsPlay);
   $('#ttsStop')?.addEventListener('click', onTtsStop);
@@ -73,31 +77,65 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderHome();
   } catch (e) {
     console.error(e);
-    alert('Veri yüklenemedi.');
+    alert('Veri yüklenemedi.\n\nKontrol: data/manifest.json veya data/normalized.json mevcut mu?\nPWA önbelleğini temizleyip tekrar deneyin.');
   }
 
-  // Tema başlat
-  initTheme();
+  initTheme(); // tema tuşu
 });
 
 /* ===================== DATA ===================== */
 
 async function loadManifest(){
-  const res = await fetch(MANIFEST_URL, { cache: 'no-store' });
-  if (!res.ok) throw new Error('Manifest okunamadı');
-  manifest = await res.json();
-  lastUpdated = manifest.lastUpdated || null;
-  const el = $('#lastUpdated');
-  if (el) el.textContent = lastUpdated ? formatDateTR(lastUpdated) : '—';
+  try{
+    const res = await fetch(MANIFEST_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`manifest ${res.status}`);
+    manifest = await res.json();
+    lastUpdated = manifest.lastUpdated || null;
+  } catch (err) {
+    console.warn('[manifest] yok → normalized fallback:', err?.message || err);
+    await loadManifestFromNormalizedFallback();
+  }
+  $('#lastUpdated') && ($('#lastUpdated').textContent = formatDateTR(lastUpdated));
+}
+
+/* manifest bulunamazsa normalized.json'dan üretir (RAM cache) */
+async function loadManifestFromNormalizedFallback(){
+  const res = await fetch(NORMALIZED_URL, { cache:'no-store' });
+  if (!res.ok) throw new Error(`normalized ${res.status}`);
+  const j = await res.json(); // {rows, lastUpdated}
+  lastUpdated = j.lastUpdated || null;
+
+  const prog = Array.from({length:115}, (_,i)=> ({s:i,done:0,total:AYAHS[i]||0})).slice(1);
+  const map = new Map();
+  for (const r of (j.rows || [])) {
+    if (r.sure>=1 && r.sure<=114) {
+      prog[r.sure-1].done++;
+      if (!map.has(r.sure)) map.set(r.sure, []);
+      map.get(r.sure).push(r);
+    }
+  }
+  manifest = { lastUpdated, progress: prog };
+
+  // per-sûre verisini RAM’e koy (diskte dosya olmasa da çalışsın)
+  for (const [s, rows] of map.entries()) {
+    rows.sort((a,b)=> a.ayet - b.ayet);
+    surahCache.set(s, { sure:s, rows, lastUpdated });
+  }
 }
 
 async function loadSurahData(s){
   if (surahCache.has(s)) return surahCache.get(s);
-  const res = await fetch(SUREH_URL(s), { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Sûre verisi okunamadı: ${s}`);
-  const j = await res.json(); // { sure, rows, lastUpdated }
-  surahCache.set(s, j);
-  return j;
+  try{
+    const res = await fetch(SUREH_URL(s), { cache: 'no-store' });
+    if (!res.ok) throw new Error(`surah ${s} ${res.status}`);
+    const j = await res.json(); // { sure, rows, lastUpdated }
+    surahCache.set(s, j);
+    return j;
+  } catch (err) {
+    if (surahCache.has(s)) return surahCache.get(s); // fallback RAM
+    console.error('[surah] yüklenemedi:', s, err?.message || err);
+    throw err;
+  }
 }
 
 /* ===================== HOME (sûre listesi) ===================== */
@@ -120,7 +158,7 @@ function renderHome(){
   const home = document.createElement('div');
   home.className = 'home';
 
-  // --- Hero grid: büyük kartlar (yalnız meali olanlar) ---
+  // büyük kartlar
   const hero = document.createElement('div');
   hero.className = 'hero';
 
@@ -150,7 +188,7 @@ function renderHome(){
   }
   home.appendChild(hero);
 
-  // --- Diğer sûreler: sessiz çipler ---
+  // diğer sûreler: çipler
   if (withoutData.length){
     const title = document.createElement('div');
     title.className = 'section-title';
@@ -162,7 +200,7 @@ function renderHome(){
 
     const chips = document.createElement('div');
     chips.className = 'chips';
-    chips.hidden = false; // istersen true yapıp butonla aç/kapa
+    chips.hidden = false; // dilersen true ile kapalı başlat
     btn.onclick = () => { chips.hidden = !chips.hidden; };
 
     for (const { s } of withoutData) {
@@ -186,7 +224,6 @@ async function openSurah(s){
   const view = $('#surahView');
   if (!list || !view) return;
 
-  // Veriyi getir & indexi hazırla
   const data = await loadSurahData(s); // { sure, rows, lastUpdated }
   byKey.clear();
   for (const r of data.rows) byKey.set(`${r.sure}:${r.ayet}`, r);
@@ -205,7 +242,6 @@ function renderSurah(s){
   if (!wrap) return;
   const fr = document.createDocumentFragment();
 
-  // — Besmele kartı: Fâtiha (1) HARİÇ
   if (s !== 1) {
     const b = document.createElement('div');
     b.className = 'ayah-card basmala';
@@ -213,7 +249,6 @@ function renderSurah(s){
     fr.appendChild(b);
   }
 
-  // — Âyet kartları (sadece girişi olanlar)
   for (let a = 1; a <= AYAHS[s]; a++) {
     const rec = byKey.get(`${s}:${a}`);
     if (!rec) continue;
@@ -235,10 +270,8 @@ function renderSurah(s){
       (note ? `<div class="note" dir="auto">${linkify(escapeHTML(note))}</div>` : '')
     );
 
-    // karta tıklayınca: O AYETTEN itibaren TTS başlat
     card.addEventListener('click', (ev) => {
-      const t = ev.target;
-      if (t.tagName === 'A') return;
+      if (ev.target.tagName === 'A') return;
       ttsPlayFromElement(card);
       card.classList.add('shownum');
       setTimeout(()=>card.classList.remove('shownum'), 1600);
@@ -248,10 +281,10 @@ function renderSurah(s){
   }
 
   wrap.replaceChildren(fr);
-  ttsStop(false); // sûre değişince sessiz stop
+  ttsStop(false);
 }
 
-/* ===================== TTS (Web Speech API) ===================== */
+/* ===================== TTS ===================== */
 
 async function initTTS(){
   if (!tts.synth) return;
@@ -264,17 +297,15 @@ async function initTTS(){
     speechSynthesis.onvoiceschanged = pickVoice;
   }
 }
-
 async function loadTTSDict(){
   try{
-    const res = await fetch('data/tts-dict.json', {cache:'no-store'});
+    const res = await fetch(urlJoin(basePath(), 'data/tts-dict.json'), {cache:'no-store'});
     if (res.ok) {
       const j = await res.json();
       if (j && Array.isArray(j.replacements)) tts.dict.replacements = j.replacements;
     }
-  } catch(_) { /* opsiyonel */ }
+  } catch(_) {}
 }
-
 function buildTTSQueueForSurah(){
   const cards = [...document.querySelectorAll('#ayahList .ayah-card')]
     .filter(el => !el.classList.contains('basmala'));
@@ -288,7 +319,6 @@ function buildTTSQueueForSurah(){
   }
   return queue;
 }
-
 function normalizeForTTS(text){
   let out = (text || '').toString();
   for (const pair of (tts.dict.replacements || [])) {
@@ -299,87 +329,45 @@ function normalizeForTTS(text){
   }
   return out;
 }
-
-/* ---- UI: Play/Stop ---- */
 function onTtsPlay(){
   if (!tts.synth) { alert('Tarayıcı TTS desteği bulunamadı.'); return; }
   if (tts.playing) return;
   tts.queue = buildTTSQueueForSurah();
   if (!tts.queue.length){ alert('Okunacak ayet bulunamadı.'); return; }
-  tts.idx = -1;
-  tts.playing = true;
-  updateTTSButtons();
-  nextUtterance();
+  tts.idx = -1; tts.playing = true; updateTTSButtons(); nextUtterance();
 }
 function onTtsStop(){ ttsStop(true); }
-
-function ttsStop(resetButtons){
+function ttsStop(reset){
   if (tts.synth) { try { tts.synth.cancel(); } catch(_) {} }
-  unmarkReading();
-  tts.playing = false;
-  tts.idx = -1;
-  tts.queue = [];
-  if (resetButtons !== false) updateTTSButtons();
+  unmarkReading(); tts.playing=false; tts.idx=-1; tts.queue=[];
+  if (reset !== false) updateTTSButtons();
 }
-
-/* ---- Belirli bir ayetten başlat ---- */
 function ttsPlayFromElement(el){
   if (!tts.synth) { alert('Tarayıcı TTS desteği bulunamadı.'); return; }
   const queue = buildTTSQueueForSurah();
   const idx = queue.findIndex(it => it.el === el);
   if (idx === -1) return;
   if (tts.synth.speaking || tts.synth.paused) { try { tts.synth.cancel(); } catch(_) {} }
-  tts.queue = queue;
-  tts.idx = idx - 1; // nextUtterance bir artırır
-  tts.playing = true;
-  updateTTSButtons();
-  nextUtterance();
+  tts.queue = queue; tts.idx = idx - 1; tts.playing = true; updateTTSButtons(); nextUtterance();
 }
-
-/* ---- Akış ---- */
 function nextUtterance(){
   if (!tts.playing) return;
-  tts.idx++;
-  if (tts.idx >= tts.queue.length) { ttsStop(true); return; }
-
+  tts.idx++; if (tts.idx >= tts.queue.length) { ttsStop(true); return; }
   const item = tts.queue[tts.idx];
   const u = new SpeechSynthesisUtterance(item.text);
-  u.lang = (tts.voice && tts.voice.lang) || 'tr-TR';
-  u.voice = tts.voice || null;
-  u.rate = tts.rate || 0.8;
-  u.pitch = 1.0;
-
-  unmarkReading();
-  item.el.classList.add('reading');
+  u.lang = (tts.voice && tts.voice.lang) || 'tr-TR'; u.voice = tts.voice || null;
+  u.rate = tts.rate || 0.8; u.pitch = 1.0;
+  unmarkReading(); item.el.classList.add('reading');
   item.el.scrollIntoView({behavior:'smooth',block:'center'});
-
-  u.onend = () => nextUtterance();
-  u.onerror = () => nextUtterance();
-
-  tts.synth.speak(u);
-  updateTTSButtons();
+  u.onend = () => nextUtterance(); u.onerror = () => nextUtterance();
+  tts.synth.speak(u); updateTTSButtons();
 }
-
-function unmarkReading(){
-  document.querySelectorAll('.ayah-card.reading').forEach(el => el.classList.remove('reading'));
-}
-
-function updateTTSButtons(){
-  const play = $('#ttsPlay'), stop = $('#ttsStop');
-  if (play) play.disabled = !!tts.playing;
-  if (stop) stop.disabled = !tts.playing;
-}
+function unmarkReading(){ document.querySelectorAll('.ayah-card.reading').forEach(el => el.classList.remove('reading')); }
+function updateTTSButtons(){ const play=$('#ttsPlay'), stop=$('#ttsStop'); if (play) play.disabled=!!tts.playing; if (stop) stop.disabled=!tts.playing; }
 
 /* ===================== NAV & UTIL ===================== */
 
-function goHome(){
-  currentSurah = null;
-  ttsStop(true);
-  renderHome();
-  return false;
-}
-
-// [[3:4]] / [[3:4-6]] iç linkleri
+function goHome(){ currentSurah = null; ttsStop(true); renderHome(); return false; }
 function linkify(txt){
   return (txt||'').replace(/\[\[\s*(\d{1,3})\s*:\s*(\d{1,3})(?:\s*-\s*(\d{1,3}))?\s*\]\]/g,
     (m, s, a1, a2)=>{
@@ -424,7 +412,7 @@ function initTheme(){
       root.setAttribute('data-theme','light');
       metaTheme && metaTheme.setAttribute('content', '#f6f7fb');
     } else {
-      root.removeAttribute('data-theme');
+      root.removeAttribute('data-theme'); // dark
       metaTheme && metaTheme.setAttribute('content', '#0b1220');
     }
     localStorage.setItem(key, mode);
