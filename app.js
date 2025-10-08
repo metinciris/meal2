@@ -23,17 +23,31 @@ const AYAHS = [0,7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,1
  36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6];
 
 /* Besmele (Fâtiha hariç) */
-const BESMELE_TEXT = `Hepimizi ve her birimizi daima bağrına basan ve ilişkisini asla kesmeyen, her zaman iyiliğimize meyilli doğanın, can veren o gücün! Adına`;
+const BESMELE_TEXT =
+  'Hepimizi ve her birimizi daima bağrına basan ve ilişkisini asla kesmeyen, her zaman iyiliğimize meyilli doğanın, can veren o gücün! Adına';
 
-/* Durum */
-const $ = s => document.querySelector(s);
+/* Kısa yardımcılar */
+const $ = (s) => document.querySelector(s);
+function escapeHTML(s){
+  return (s||'').toString().replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
+}
+function formatDateTR(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleDateString('tr-TR', { day:'numeric', month:'long', year:'numeric', timeZone:'Europe/Istanbul' });
+  }catch{ return iso }
+}
+
+/* Global durum */
 const byKey = new Map();   // "s:a" → {sure, ayet, meal, aciklama, last}
 let lastUpdated = null;
 let currentSurah = null;
 
 /* ==== TTS durum & sözlük ==== */
 const tts = {
-  synth: window.speechSynthesis || null,
+  synth: typeof window !== 'undefined' ? window.speechSynthesis : null,
   voice: null,
   rate: 0.8,   // varsayılan hız
   queue: [],   // {id, text, el}
@@ -52,16 +66,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#ttsStop')?.addEventListener('click', onTtsStop);
   $('#ttsRate')?.addEventListener('input', e => { tts.rate = parseFloat(e.target.value || '0.8'); });
 
-  // Yükleniyor overlay (artık görünür kullanmıyoruz; ama dursun)
-  showLoading(true);
   try {
     await Promise.all([ loadAll(), initTTS(), loadTTSDict() ]);
-    ();
+    renderHome();
   } catch (e) {
     console.error(e);
     alert('Veri yüklenemedi.');
-  } finally {
-    showLoading(false);
   }
 });
 
@@ -74,7 +84,8 @@ async function loadAll(){
   byKey.clear();
   for (const x of j.rows) byKey.set(`${x.sure}:${x.ayet}`, x);
   lastUpdated = j.lastUpdated || null;
-  $('#lastUpdated').textContent = lastUpdated ? formatDateTR(lastUpdated) : '—';
+  const el = $('#lastUpdated');
+  if (el) el.textContent = lastUpdated ? formatDateTR(lastUpdated) : '—';
 }
 
 /* ===================== HOME (sûre listesi) ===================== */
@@ -82,6 +93,8 @@ async function loadAll(){
 function renderHome(){
   const list = $('#surahList');
   const view = $('#surahView');
+  if (!list || !view) return;
+
   view.hidden = true; view.style.display = 'none';
   list.hidden = false; list.style.display = '';
   $('#crumbs').textContent = 'Ana sayfa';
@@ -90,7 +103,9 @@ function renderHome(){
   const withoutData = [];
   for (let s=1; s<=114; s++){
     let done = 0;
-    for (let a=1; a<=AYAHS[s]; a++) if (byKey.has(`${s}:${a}`)) done++;
+    for (let a=1; a<=AYAHS[s]; a++){
+      if (byKey.has(`${s}:${a}`)) done++;
+    }
     if (done > 0) withData.push({ s, done, total: AYAHS[s] });
     else withoutData.push({ s });
   }
@@ -112,7 +127,6 @@ function renderHome(){
       const card = document.createElement('button');
       card.className = 'card done';
       const pct = Math.min(100, Math.round((done/total)*100));
-
       card.innerHTML = `
         <div class="head">
           <div class="badge">${s}</div>
@@ -121,7 +135,7 @@ function renderHome(){
             <div class="sub">${done}/${total} tamamlandı</div>
           </div>
         </div>
-        <div class="progress"><span style="width:${pct}%;"></span></div>
+        <div class="progress"><span style="width:${pct}%"></span></div>
       `;
       card.onclick = () => { ttsStop(); openSurah(s); };
       hero.appendChild(card);
@@ -141,37 +155,7 @@ function renderHome(){
 
     const chips = document.createElement('div');
     chips.className = 'chips';
-    chips.hidden = false; // istersen true yapıp butonla aç-kapa yapabilirsin
-    btn.onclick = () => { chips.hidden = !chips.hidden; };
-
-    for (const {s} of withoutData) {
-      const chip = document.createElement('button');
-      chip.className = 'chip';
-      chip.textContent = `${s} - ${NAMES[s]}`;
-      chip.onclick = () => { ttsStop(); openSurah(s); };
-      chips.appendChild(chip);
-    }
-    home.appendChild(chips);
-  }
-
-  $('#surahList').replaceChildren(home);
-}
-
-
-  // 2) Ayraç + Diğer sûreler (kollaps yerine basit aç/kapa)
-  if (withoutData.length){
-    const title = document.createElement('div');
-    title.className = 'section-title';
-    const btn = document.createElement('button');
-    btn.textContent = `Diğer sûreler (${withoutData.length})`;
-    const line = document.createElement('div'); line.className = 'line';
-    title.appendChild(btn); title.appendChild(line);
-    home.appendChild(title);
-
-    const chips = document.createElement('div');
-    chips.className = 'chips';
-    chips.hidden = false; // istersen true yap, butonla açılır kapanır
-
+    chips.hidden = false; // dilersen true yapıp düğmeyle aç/kapa yapabilirsin
     btn.onclick = () => { chips.hidden = !chips.hidden; };
 
     for (const {s} of withoutData) {
@@ -187,13 +171,16 @@ function renderHome(){
   list.replaceChildren(home);
 }
 
-
 /* ===================== SÛRE GÖRÜNÜMÜ ===================== */
 
 function openSurah(s){
   currentSurah = s;
-  $('#surahList').hidden = true;  $('#surahList').style.display = 'none';
-  $('#surahView').hidden = false; $('#surahView').style.display = '';
+  const list = $('#surahList');
+  const view = $('#surahView');
+  if (!list || !view) return;
+
+  list.hidden = true;  list.style.display = 'none';
+  view.hidden = false; view.style.display = '';
   $('#surahTitle').textContent = `${s} - ${NAMES[s]}`;
   $('#crumbs').innerHTML = `<a href="#" onclick="return goHome()">Ana sayfa</a> › ${s} - ${NAMES[s]}`;
   window.scrollTo({ top: 0, behavior: 'auto' });
@@ -202,6 +189,7 @@ function openSurah(s){
 
 function renderSurah(s){
   const wrap = $('#ayahList');
+  if (!wrap) return;
   const fr = document.createDocumentFragment();
 
   // — Besmele kartı: Fâtiha (1) HARİÇ
@@ -261,7 +249,7 @@ async function initTTS(){
     tts.voice = voices.find(v => /tr[-_]?TR/i.test(v.lang)) || voices[0] || null;
   };
   pickVoice();
-  if (speechSynthesis && speechSynthesis.onvoiceschanged !== undefined) {
+  if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
     speechSynthesis.onvoiceschanged = pickVoice;
   }
 }
@@ -273,7 +261,7 @@ async function loadTTSDict(){
       const j = await res.json();
       if (j && Array.isArray(j.replacements)) tts.dict.replacements = j.replacements;
     }
-  } catch(_) { /* yoksa sorun değil */ }
+  } catch(_) { /* opsiyonel */ }
 }
 
 function buildTTSQueueForSurah(s){
@@ -292,14 +280,14 @@ function buildTTSQueueForSurah(s){
 
 function normalizeForTTS(text){
   let out = (text || '').toString();
-  for (const [from, to] of (tts.dict.replacements || [])) {
+  for (const pair of (tts.dict.replacements || [])) {
+    const from = pair[0], to = pair[1];
     if (!from) continue;
-    const re = new RegExp(escapeReg(from), 'g');
+    const re = new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
     out = out.replace(re, to);
   }
   return out;
 }
-function escapeReg(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 /* ---- UI: Play/Stop ---- */
 function onTtsPlay(){
@@ -366,8 +354,9 @@ function unmarkReading(){
 }
 
 function updateTTSButtons(){
-  $('#ttsPlay').disabled = !!tts.playing;
-  $('#ttsStop').disabled = !tts.playing;
+  const play = $('#ttsPlay'), stop = $('#ttsStop');
+  if (play) play.disabled = !!tts.playing;
+  if (stop) stop.disabled = !tts.playing;
 }
 
 /* ===================== NAV & UTIL ===================== */
@@ -377,18 +366,6 @@ function goHome(){
   ttsStop(true);
   renderHome();
   return false;
-}
-
-function showLoading(v){
-  const el = $('#loading'); if (!el) return;
-  el.classList.toggle('show', !!v);
-}
-
-function formatDateTR(iso){
-  try{
-    const d = new Date(iso);
-    return d.toLocaleDateString('tr-TR', { day:'numeric', month:'long', year:'numeric' , timeZone:'Europe/Istanbul'});
-  }catch{ return iso }
 }
 
 // [[3:4]] / [[3:4-6]] iç linkleri
@@ -410,10 +387,4 @@ function linkify(txt){
         return false;`;
       return `<a href="#" onclick="${js}">${s}:${a2 ? `${a1}-${a2}` : a1}</a>`;
     });
-}
-
-function escapeHTML(s){
-  return (s||'').toString().replace(/[&<>"']/g, m => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[m]));
 }
