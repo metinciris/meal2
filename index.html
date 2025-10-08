@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kuran Meal (GitHub Only)</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <meta name="theme-color" content="#111827">
+  <!-- iOS -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+  <link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+  <!-- Yükleniyor katmanı -->
+  <div id="loading" class="loading" aria-live="polite">
+    <div class="loading-box">
+      <div class="loading-title">Kuran'ın gölgesinde</div>
+      <div class="loading-author">Ayhan KIRMIZI</div>
+      <div class="loading-quote">Aklını kullanmayanların üzerine pislik yağar</div>
+      <div class="loading-spin">Yükleniyor…</div>
+    </div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <h1>Kuran Meal</h1>
+      <div id="crumbs" class="crumbs">Ana sayfa</div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="surahList" class="surah-list"></section>
+
+    <section id="surahView" class="surah-view" hidden>
+      <button id="backBtn" class="back">← Tüm sûreler</button>
+      <h2 id="surahTitle"></h2>
+
+      <div class="tts-controls">
+        <button id="ttsPlay" class="btn">▶︎ Başlat</button>
+        <button id="ttsStop" class="btn" disabled>⏹ Durdur</button>
+        <label class="opt">
+          Hız
+          <input id="ttsRate" type="range" min="0.5" max="1.2" step="0.05" value="0.8">
+        </label>
+      </div>
+
+      <div id="ayahList" class="ayah-list"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <small>Son güncelleme: <span id="lastUpdated">—</span></small>
+  </footer>
+
+  <script src="app.js?v=1" defer></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>
