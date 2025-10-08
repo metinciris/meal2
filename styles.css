@@ -1,7 +1,59 @@
-:root{
-  --bg:#0b1220; --panel:#0f172a; --card:#0f1829; --ink:#e8edf7; --muted:#9aa6b2;
-  --accent:#10b981; --line:#20304a; --chip:#222e41; --chip-b:#33445f;
+/* ===== Temel tipografi (modern & keskin render) ===== */
+html,body{
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
+
+/* ===== Tema değiştirilebilir renk değişkenleri ===== */
+:root{
+  /* DARK (varsayılan) – “Charcoal + Teal” */
+  --bg:#0c1118;
+  --panel:#101722;
+  --card:#0f1829;
+  --ink:#eaf1fb;
+  --muted:#9aa6b2;
+  --line:#1e2a3f;
+  --chip:#223047;
+  --chip-b:#32425c;
+  --accent:#10b981;
+}
+
+/* LIGHT tema: yumuşak gri + koyu mürekkep */
+:root[data-theme="light"]{
+  --bg:#f6f7fb;
+  --panel:#ffffff;
+  --card:#ffffff;
+  --ink:#1d2430;
+  --muted:#5f6b7a;
+  --line:#e5e9f2;
+  --chip:#e9eef6;
+  --chip-b:#d7e0ec;
+  --accent:#0ea5e9; /* açık temada vurgu: mavi */
+}
+
+/* Mevcut stillerdeki renk kullanımları zaten var.
+   Sadece gövde/backgroud için varolan satırları bu değişkenlerle uyumlu bırak. */
+html,body{ background:var(--bg); color:var(--ink); }
+
+/* Tema butonu */
+.theme-toggle{
+  margin-left:auto;
+  background:var(--card);
+  color:var(--ink);
+  border:1px solid var(--line);
+  padding:6px 10px;
+  border-radius:10px;
+  cursor:pointer;
+  transition:background .2s ease, border-color .2s ease, transform .06s ease;
+}
+.theme-toggle:hover{ transform:translateY(-1px); border-color:#3a4c66 }
+
+/* Kart/çip/ayırıcı gibi bileşenler zaten CSS değişkenlerini kullanıyor.
+   İstersen okunabilirliği biraz artırmak için paragraf metinlerinde line-height’i yükselt: */
+.ayah-card p{ line-height:1.7; font-size:17px }
+
 
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
