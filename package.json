@@ -1,0 +1,11 @@
+{
+  "name": "meal2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:data": "node scripts/build-from-issues.mjs"
+  },
+  "dependencies": {
+    "octokit": "^4.0.2"
+  }
+}
