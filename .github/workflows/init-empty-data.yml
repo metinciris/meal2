@@ -1,0 +1,61 @@
+name: Init Empty Data (create data/surah/*.json + manifest.json)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - ".github/workflows/init-empty-data.yml"
+
+permissions:
+  contents: write  # data/* içine commit atacağız
+
+jobs:
+  build-empty:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate empty data files (no deps)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const AYAHS = [0,7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,110,98,135,
+              112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,59,37,35,38,29,18,45,
+              60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,
+              36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6];
+
+            const dataDir = path.join(process.cwd(), 'data');
+            const surahDir = path.join(dataDir, 'surah');
+            fs.mkdirSync(surahDir, { recursive: true });
+
+            // 1) Boş normalized.json
+            const normalized = { rows: [], lastUpdated: null };
+            fs.writeFileSync(path.join(dataDir, 'normalized.json'), JSON.stringify(normalized, null, 2), 'utf8');
+
+            // 2) 114 adet boş sûre dosyası
+            for (let s = 1; s <= 114; s++) {
+              const file = path.join(surahDir, `${s}.json`);
+              const payload = { sure: s, rows: [], lastUpdated: null };
+              fs.writeFileSync(file, JSON.stringify(payload, null, 2), 'utf8');
+            }
+
+            // 3) Manifest (tamamı 0/total)
+            const progress = [];
+            for (let s = 1; s <= 114; s++) {
+              progress.push({ s, done: 0, total: AYAHS[s] });
+            }
+            const manifest = { lastUpdated: null, progress };
+            fs.writeFileSync(path.join(dataDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
+
+            core.info('Empty dataset generated under data/{normalized.json, manifest.json, surah/*.json}');
+
+      - name: Commit data/*
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "init: create empty data set (manifest + per-sûre json)"
+          file_pattern: data/**
