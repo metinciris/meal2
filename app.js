@@ -80,6 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const key = 'theme';
   const root = document.documentElement;
   const btn = document.getElementById('themeToggle');
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
 
   // Başlangıç: localStorage > sistem tercihi > dark
   let saved = localStorage.getItem(key);
@@ -95,12 +96,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   function apply(mode){
-    if (mode === 'light') root.setAttribute('data-theme','light');
-    else root.removeAttribute('data-theme'); // dark varsayılan
+    if (mode === 'light') {
+      root.setAttribute('data-theme','light');
+      metaTheme && metaTheme.setAttribute('content', '#f6f7fb'); // Android Chrome üstbar
+    } else {
+      root.removeAttribute('data-theme'); // dark varsayılan
+      metaTheme && metaTheme.setAttribute('content', '#0b1220');
+    }
     localStorage.setItem(key, mode);
     if (btn) btn.textContent = (mode === 'light') ? '☀️' : '🌙';
   }
 })();
+
 
 /* ===================== DATA ===================== */
 
