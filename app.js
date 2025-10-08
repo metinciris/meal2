@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#ttsStop')?.addEventListener('click', onTtsStop);
   $('#ttsRate')?.addEventListener('input', e => { tts.rate = parseFloat(e.target.value || '0.8'); });
 
-  // Yükleniyor overlay
+  // Yükleniyor overlay (artık görünür kullanmıyoruz; ama dursun)
   showLoading(true);
   try {
     await Promise.all([ loadAll(), initTTS(), loadTTSDict() ]);
@@ -74,7 +74,7 @@ async function loadAll(){
   byKey.clear();
   for (const x of j.rows) byKey.set(`${x.sure}:${x.ayet}`, x);
   lastUpdated = j.lastUpdated || null;
-  $('#lastUpdated').textContent = lastUpdated || '—';
+  $('#lastUpdated').textContent = lastUpdated ? formatDateTR(lastUpdated) : '—';
 }
 
 /* ===================== HOME (sûre listesi) ===================== */
@@ -86,16 +86,50 @@ function renderHome(){
   list.hidden = false; list.style.display = '';
   $('#crumbs').textContent = 'Ana sayfa';
 
-  const fr = document.createDocumentFragment();
+  const withData = [];
+  const withoutData = [];
   for (let s=1; s<=114; s++){
     let done = 0;
     for (let a=1; a<=AYAHS[s]; a++) if (byKey.has(`${s}:${a}`)) done++;
-    const btn = document.createElement('button');
-    btn.className = 'surah-btn' + (done>0 ? ' done' : '');
-    btn.innerHTML = `${s} - ${NAMES[s]}${done>0 ? `<span class="sub">${done}/${AYAHS[s]} tamamlandı</span>`:''}`;
-    btn.onclick = () => { ttsStop(); openSurah(s); };
-    fr.appendChild(btn);
+    if (done > 0) withData.push({ s, done });
+    else withoutData.push({ s, done: 0 });
   }
+
+  const fr = document.createDocumentFragment();
+
+  // — Girişi olan sûreler (büyük kartlar, grid)
+  const grid = document.createElement('div');
+  grid.className = 'surah-list'; // mevcut stil
+  for (const {s, done} of withData) {
+    const btn = document.createElement('button');
+    btn.className = 'surah-btn done';
+    btn.innerHTML = `${s} - ${NAMES[s]}<span class="sub">${done}/${AYAHS[s]} tamamlandı</span>`;
+    btn.onclick = () => { ttsStop(); openSurah(s); };
+    grid.appendChild(btn);
+  }
+  fr.appendChild(grid);
+
+  // — Diğer sûreler (kollaps, daha küçük/yoğun grid)
+  if (withoutData.length) {
+    const details = document.createElement('details');
+    details.className = 'others';
+    const summary = document.createElement('summary');
+    summary.textContent = `Diğer sûreler (${withoutData.length})`;
+    details.appendChild(summary);
+
+    const smallGrid = document.createElement('div');
+    smallGrid.className = 'surah-list compact'; // küçük kartlar için
+    for (const {s} of withoutData) {
+      const btn = document.createElement('button');
+      btn.className = 'surah-btn';
+      btn.innerHTML = `${s} - ${NAMES[s]}`;
+      btn.onclick = () => { ttsStop(); openSurah(s); };
+      smallGrid.appendChild(btn);
+    }
+    details.appendChild(smallGrid);
+    fr.appendChild(details);
+  }
+
   list.replaceChildren(fr);
 }
 
@@ -293,6 +327,13 @@ function goHome(){
 function showLoading(v){
   const el = $('#loading'); if (!el) return;
   el.classList.toggle('show', !!v);
+}
+
+function formatDateTR(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleDateString('tr-TR', { day:'numeric', month:'long', year:'numeric' , timeZone:'Europe/Istanbul'});
+  }catch{ return iso }
 }
 
 // [[3:4]] / [[3:4-6]] iç linkleri
