@@ -1,12 +1,5 @@
 // Node 20+. Issues -> data/normalized.json (tekil + toplu). Hatalara dayanıklı.
 
-// KİMİN issue'ları işlenecek?
-const ALLOWED_AUTHORS = new Set([
-  'metinciris', // sen ekleyebilirsin yabancı ekleyemez
-  // 'baska-kullanici', // istersen ekle
-]);
-
-
 import { writeFileSync, mkdirSync } from "node:fs";
 import { Octokit } from "octokit";
 
@@ -23,11 +16,17 @@ if (!GITHUB_TOKEN) {
 const [owner, repo] = GITHUB_REPOSITORY.split("/");
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
 
-/* ---------- Yardımcılar ---------- */
+/* =================== BEYAZ LİSTE =================== */
+/* Sadece bu kullanıcıların issue'ları işlenecek (GitHub kullanıcı adı) */
+const ALLOWED_AUTHORS = new Set([
+  "metinciris", // ← seni bırakıyoruz
+  // "baska-kullanici", // istersen ekle
+]);
+
+/* =================== Yardımcılar =================== */
 
 // Issue Forms body’sinden alan çek (TR başlık varyasyonları toleranslı)
-// Değeri, SONRAKİ "###" başlığına kadar alır; iç gruplar için non-capturing kullanır.
-// "_No response_" veya "No response" değerlerini boş kabul eder.
+// Değeri SONRAKİ "###" başlığına kadar alır; "_No response_" → boş kabul.
 function pickFromBody(body, labelPattern) {
   const re = new RegExp(
     `###\\s*(?:${labelPattern})\\s*\\n([\\s\\S]*?)(?=\\n###|$)`,
@@ -65,7 +64,6 @@ function parseSingleFromBody(body) {
 }
 
 // Toplu metin: "1- ...", "2 - ...", "3. ...", "4 — ...", "5:" vb.
-// Numara+ayraç ile başlayan satır yeni ayet; diğer satırlar bir öncekiye eklenir.
 function parseBulkBlock(block) {
   const lines = (block || "").replace(/\r/g, "").split("\n");
   const out = [];
@@ -85,7 +83,6 @@ function parseBulkBlock(block) {
         cur = null;
       }
     } else if (cur) {
-      // devam satırı: paragraf birleşsin
       const t = line.trim();
       if (t) cur.meal = (cur.meal ? cur.meal + "\n" : "") + t;
     }
@@ -93,7 +90,6 @@ function parseBulkBlock(block) {
   return out.filter(x => x.meal && x.meal.trim());
 }
 
-// Toplu formu body’den parse
 function parseBulkFromBody(body) {
   const sure = toInt(
     pickFromBody(body, "S[ûu]re\\s*\\(1-114\\)|Sure\\s*\\(1-114\\)")
@@ -107,11 +103,11 @@ function parseBulkFromBody(body) {
   return items.length ? items : null;
 }
 
-/* ---------- Ana akış ---------- */
+/* =================== Ana akış =================== */
 
 (async function run() {
   const latestByKey = new Map();
-  let scanned = 0, accepted = 0;
+  let scanned = 0, accepted = 0, skipped = 0;
 
   try {
     const states = ["open", "closed"]; // günceli yakala
@@ -127,6 +123,16 @@ function parseBulkFromBody(body) {
         for (const it of items) {
           if (it.pull_request) continue; // PR değil
           scanned++;
+
+          // >>>>> BEYAZ LİSTE FİLTRESİ (hemen başta)
+          const author = it.user?.login || "";
+          if (!ALLOWED_AUTHORS.has(author)) {
+            skipped++;
+            // JSON'a girmesin diye tamamen atlıyoruz
+            console.warn(`[skip] yetkisiz yazar: @${author} #${it.number}`);
+            continue;
+          }
+          // <<<<<
 
           const title = it.title || "";
           const body = it.body || "";
@@ -150,7 +156,7 @@ function parseBulkFromBody(body) {
                 accepted++;
               }
             } else if (/^\s*\[Meal\]/i.test(title)) {
-              // TEKIL MOD
+              // TEKİL MOD
               let parsed = parseSingleFromBody(body);
               if (!parsed) {
                 // Başlıktan dene (form gövdesi farklıysa)
@@ -192,11 +198,9 @@ function parseBulkFromBody(body) {
     mkdirSync("data", { recursive: true });
     writeFileSync("data/normalized.json", JSON.stringify({ rows, lastUpdated }, null, 2), "utf8");
 
-    console.log(`[build] taranan issue: ${scanned}, kayda geçen kayıt: ${accepted}, toplam ayet: ${rows.length}`);
+    console.log(`[build] taranan issue: ${scanned}, kabul: ${accepted}, atlanan (yetkisiz): ${skipped}, toplam ayet: ${rows.length}`);
     console.log(`[build] lastUpdated: ${lastUpdated || '-'}`);
   } catch (e) {
     console.error("[build] genel hata:", e?.message || e);
-    // Burada process.exit(1) kullanmıyoruz ki tek bir hatada tüm iş başarısız sayılmasın.
-    // Yine de veri yazılamadıysa önceki dosya kalır.
   }
 })();
