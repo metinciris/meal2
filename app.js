@@ -1,9 +1,10 @@
-/**************** app.js — GitHub Issues JSON + PWA + TTS ****************/
+/**************** app.js — Manifest + Per-Sûre JSON, PWA, TTS, Tema ****************/
 
-/* Veri kaynağı: repodaki JSON (Actions üretir) */
-const API_URL = './data/normalized.json';
+/* Veri kaynakları */
+const MANIFEST_URL = './data/manifest.json';
+const SUREH_URL = (s) => `./data/surah/${s}.json`;
 
-/* Sûre adları ve ayet sayıları */
+/* Sûre adları ve âyet sayıları */
 const NAMES = [
   '', 'Fâtiha','Bakara','Âl-i İmrân','Nisâ','Mâide','En’âm','A’râf','Enfâl','Tevbe','Yûnus','Hûd',
   'Yûsuf','Ra’d','İbrâhîm','Hicr','Nahl','İsrâ','Kehf','Meryem','Tâhâ','Enbiyâ','Hac','Mü’minûn',
@@ -40,16 +41,18 @@ function formatDateTR(iso){
   }catch{ return iso }
 }
 
-/* Global durum */
-const byKey = new Map();   // "s:a" → {sure, ayet, meal, aciklama, last}
+/* Global durum (manifest + seçilen sûrenin verisi) */
+let manifest = null;                   // { lastUpdated, progress: [{s,done,total}] }
 let lastUpdated = null;
+const surahCache = new Map();          // s → { sure, rows, lastUpdated }
+const byKey = new Map();               // yalnız açık sûrenin kayıtları "s:a" → rec
 let currentSurah = null;
 
 /* ==== TTS durum & sözlük ==== */
 const tts = {
   synth: typeof window !== 'undefined' ? window.speechSynthesis : null,
   voice: null,
-  rate: 0.8,   // varsayılan hız
+  rate: 0.8,
   queue: [],   // {id, text, el}
   idx: -1,
   playing: false,
@@ -59,67 +62,42 @@ const tts = {
 /* ===================== BOOT ===================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // NAV & TTS kontrolleri
   $('#backBtn')?.addEventListener('click', () => { ttsStop(); return goHome(); });
-
-  // TTS UI
   $('#ttsPlay')?.addEventListener('click', onTtsPlay);
   $('#ttsStop')?.addEventListener('click', onTtsStop);
   $('#ttsRate')?.addEventListener('input', e => { tts.rate = parseFloat(e.target.value || '0.8'); });
 
   try {
-    await Promise.all([ loadAll(), initTTS(), loadTTSDict() ]);
+    await Promise.all([ loadManifest(), initTTS(), loadTTSDict() ]);
     renderHome();
   } catch (e) {
     console.error(e);
     alert('Veri yüklenemedi.');
   }
+
+  // Tema başlat
+  initTheme();
 });
-
-/* ===================== Tema toggle ===================== */
-(function initTheme(){
-  const key = 'theme';
-  const root = document.documentElement;
-  const btn = document.getElementById('themeToggle');
-  const metaTheme = document.querySelector('meta[name="theme-color"]');
-
-  // Başlangıç: localStorage > sistem tercihi > dark
-  let saved = localStorage.getItem(key);
-  if (!saved) {
-    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-    saved = prefersLight ? 'light' : 'dark';
-  }
-  apply(saved);
-
-  btn?.addEventListener('click', () => {
-    const next = (root.getAttribute('data-theme') === 'light') ? 'dark' : 'light';
-    apply(next);
-  });
-
-  function apply(mode){
-    if (mode === 'light') {
-      root.setAttribute('data-theme','light');
-      metaTheme && metaTheme.setAttribute('content', '#f6f7fb'); // Android Chrome üstbar
-    } else {
-      root.removeAttribute('data-theme'); // dark varsayılan
-      metaTheme && metaTheme.setAttribute('content', '#0b1220');
-    }
-    localStorage.setItem(key, mode);
-    if (btn) btn.textContent = (mode === 'light') ? '☀️' : '🌙';
-  }
-})();
-
 
 /* ===================== DATA ===================== */
 
-async function loadAll(){
-  const res = await fetch(API_URL, { cache:'no-store' });
-  if (!res.ok) throw new Error('Veri okunamadı: ' + res.status);
-  const j = await res.json();
-  byKey.clear();
-  for (const x of j.rows) byKey.set(`${x.sure}:${x.ayet}`, x);
-  lastUpdated = j.lastUpdated || null;
+async function loadManifest(){
+  const res = await fetch(MANIFEST_URL, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Manifest okunamadı');
+  manifest = await res.json();
+  lastUpdated = manifest.lastUpdated || null;
   const el = $('#lastUpdated');
   if (el) el.textContent = lastUpdated ? formatDateTR(lastUpdated) : '—';
+}
+
+async function loadSurahData(s){
+  if (surahCache.has(s)) return surahCache.get(s);
+  const res = await fetch(SUREH_URL(s), { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Sûre verisi okunamadı: ${s}`);
+  const j = await res.json(); // { sure, rows, lastUpdated }
+  surahCache.set(s, j);
+  return j;
 }
 
 /* ===================== HOME (sûre listesi) ===================== */
@@ -135,19 +113,14 @@ function renderHome(){
 
   const withData = [];
   const withoutData = [];
-  for (let s=1; s<=114; s++){
-    let done = 0;
-    for (let a=1; a<=AYAHS[s]; a++){
-      if (byKey.has(`${s}:${a}`)) done++;
-    }
-    if (done > 0) withData.push({ s, done, total: AYAHS[s] });
-    else withoutData.push({ s });
+  for (const p of manifest.progress || []) {
+    (p.done > 0 ? withData : withoutData).push(p);
   }
 
   const home = document.createElement('div');
   home.className = 'home';
 
-  // --- Hero grid: büyük kartlar ---
+  // --- Hero grid: büyük kartlar (yalnız meali olanlar) ---
   const hero = document.createElement('div');
   hero.className = 'hero';
 
@@ -157,21 +130,20 @@ function renderHome(){
     empty.innerHTML = `<div class="title">Henüz meâl girilmemiş</div><div class="sub">Issues → Meal Ekle formuyla başlayın</div>`;
     hero.appendChild(empty);
   } else {
-    for (const {s, done, total} of withData) {
+    for (const { s, done, total } of withData) {
       const card = document.createElement('button');
       card.className = 'card done';
       const pct = Math.min(100, Math.round((done/total)*100));
-card.innerHTML = `
-  <div class="head">
-    <div class="badge">${s}</div>
-    <div class="head-text">
-      <div class="title">${NAMES[s]}</div>
-      <div class="sub">${done}/${total} tamamlandı</div>
-    </div>
-  </div>
-  <div class="progress"><span style="width:${pct}%"></span></div>
-`;
-
+      card.innerHTML = `
+        <div class="head">
+          <div class="badge">${s}</div>
+          <div class="head-text">
+            <div class="title">${NAMES[s]}</div>
+            <div class="sub">${done}/${total} tamamlandı</div>
+          </div>
+        </div>
+        <div class="progress"><span style="width:${pct}%"></span></div>
+      `;
       card.onclick = () => { ttsStop(); openSurah(s); };
       hero.appendChild(card);
     }
@@ -190,10 +162,10 @@ card.innerHTML = `
 
     const chips = document.createElement('div');
     chips.className = 'chips';
-    chips.hidden = false; // dilersen true yapıp düğmeyle aç/kapa yapabilirsin
+    chips.hidden = false; // istersen true yapıp butonla aç/kapa
     btn.onclick = () => { chips.hidden = !chips.hidden; };
 
-    for (const {s} of withoutData) {
+    for (const { s } of withoutData) {
       const chip = document.createElement('button');
       chip.className = 'chip';
       chip.textContent = `${s} - ${NAMES[s]}`;
@@ -208,17 +180,23 @@ card.innerHTML = `
 
 /* ===================== SÛRE GÖRÜNÜMÜ ===================== */
 
-function openSurah(s){
+async function openSurah(s){
   currentSurah = s;
   const list = $('#surahList');
   const view = $('#surahView');
   if (!list || !view) return;
+
+  // Veriyi getir & indexi hazırla
+  const data = await loadSurahData(s); // { sure, rows, lastUpdated }
+  byKey.clear();
+  for (const r of data.rows) byKey.set(`${r.sure}:${r.ayet}`, r);
 
   list.hidden = true;  list.style.display = 'none';
   view.hidden = false; view.style.display = '';
   $('#surahTitle').textContent = `${s} - ${NAMES[s]}`;
   $('#crumbs').innerHTML = `<a href="#" onclick="return goHome()">Ana sayfa</a> › ${s} - ${NAMES[s]}`;
   window.scrollTo({ top: 0, behavior: 'auto' });
+
   renderSurah(s);
 }
 
@@ -235,7 +213,7 @@ function renderSurah(s){
     fr.appendChild(b);
   }
 
-  // — Ayet kartları (sadece meali olanlar)
+  // — Âyet kartları (sadece girişi olanlar)
   for (let a = 1; a <= AYAHS[s]; a++) {
     const rec = byKey.get(`${s}:${a}`);
     if (!rec) continue;
@@ -247,13 +225,11 @@ function renderSurah(s){
     card.className = 'ayah-card';
     card.id = `a-${s}-${a}`;
 
-    // numara rozeti (gizli; hover/tıkla görünür)
     const num = document.createElement('span');
     num.className = 'anum';
     num.textContent = `${s}:${a}`;
     card.appendChild(num);
 
-    // içerik
     card.insertAdjacentHTML('beforeend',
       `<p dir="auto">${escapeHTML(text)}</p>` +
       (note ? `<div class="note" dir="auto">${linkify(escapeHTML(note))}</div>` : '')
@@ -262,7 +238,7 @@ function renderSurah(s){
     // karta tıklayınca: O AYETTEN itibaren TTS başlat
     card.addEventListener('click', (ev) => {
       const t = ev.target;
-      if (t.tagName === 'A') return; // iç linke saygı
+      if (t.tagName === 'A') return;
       ttsPlayFromElement(card);
       card.classList.add('shownum');
       setTimeout(()=>card.classList.remove('shownum'), 1600);
@@ -299,7 +275,7 @@ async function loadTTSDict(){
   } catch(_) { /* opsiyonel */ }
 }
 
-function buildTTSQueueForSurah(s){
+function buildTTSQueueForSurah(){
   const cards = [...document.querySelectorAll('#ayahList .ayah-card')]
     .filter(el => !el.classList.contains('basmala'));
   const queue = [];
@@ -328,7 +304,7 @@ function normalizeForTTS(text){
 function onTtsPlay(){
   if (!tts.synth) { alert('Tarayıcı TTS desteği bulunamadı.'); return; }
   if (tts.playing) return;
-  tts.queue = buildTTSQueueForSurah(currentSurah);
+  tts.queue = buildTTSQueueForSurah();
   if (!tts.queue.length){ alert('Okunacak ayet bulunamadı.'); return; }
   tts.idx = -1;
   tts.playing = true;
@@ -349,7 +325,7 @@ function ttsStop(resetButtons){
 /* ---- Belirli bir ayetten başlat ---- */
 function ttsPlayFromElement(el){
   if (!tts.synth) { alert('Tarayıcı TTS desteği bulunamadı.'); return; }
-  const queue = buildTTSQueueForSurah(currentSurah);
+  const queue = buildTTSQueueForSurah();
   const idx = queue.findIndex(it => it.el === el);
   if (idx === -1) return;
   if (tts.synth.speaking || tts.synth.paused) { try { tts.synth.cancel(); } catch(_) {} }
@@ -422,4 +398,36 @@ function linkify(txt){
         return false;`;
       return `<a href="#" onclick="${js}">${s}:${a2 ? `${a1}-${a2}` : a1}</a>`;
     });
+}
+
+/* ===================== Tema toggle ===================== */
+function initTheme(){
+  const key = 'theme';
+  const root = document.documentElement;
+  const btn = document.getElementById('themeToggle');
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+
+  let saved = localStorage.getItem(key);
+  if (!saved) {
+    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    saved = prefersLight ? 'light' : 'dark';
+  }
+  apply(saved);
+
+  btn?.addEventListener('click', () => {
+    const next = (root.getAttribute('data-theme') === 'light') ? 'dark' : 'light';
+    apply(next);
+  });
+
+  function apply(mode){
+    if (mode === 'light') {
+      root.setAttribute('data-theme','light');
+      metaTheme && metaTheme.setAttribute('content', '#f6f7fb');
+    } else {
+      root.removeAttribute('data-theme');
+      metaTheme && metaTheme.setAttribute('content', '#0b1220');
+    }
+    localStorage.setItem(key, mode);
+    if (btn) btn.textContent = (mode === 'light') ? '☀️' : '🌙';
+  }
 }
