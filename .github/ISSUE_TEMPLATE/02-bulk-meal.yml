@@ -1,0 +1,19 @@
+name: "[BulkMeal] Toplu âyet"
+description: Bir sûrede birden çok âyeti numara:metin şeklinde ekleme
+title: "[BulkMeal] Sûre {{ inputs.sure }}"
+labels: ["bulk"]
+body:
+  - type: input
+    id: sure
+    attributes: { label: "Sûre (1-114)", placeholder: "2" }
+    validations: { required: true }
+  - type: textarea
+    id: blob
+    attributes:
+      label: "Toplu Metin"
+      description: "Satır satır: 1- ..., 2- ..., 3- ... vb."
+      placeholder: |
+        1- ELİF LAM MİM / ...
+        2- Empati sahiplerine rehber...
+        3- ...
+    validations: { required: true }
