@@ -156,6 +156,93 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui
 .ayah-card.basmala{ border-color:#3b8261; background:linear-gradient(180deg, rgba(16,185,129,.08), rgba(16,185,129,.03)) }
 .bsm-text{ margin:0; font-style:italic }
 
+
+/* ===== LIGHT THEME – okunabilir kontrastlar ===== */
+:root[data-theme="light"]{
+  --bg:#f6f7fb;
+  --panel:#ffffff;
+  --card:#ffffff;
+  --ink:#1e2430;
+  --muted:#5f6b7a;
+  --line:#e5e9f2;
+  --chip:#eef2f8;
+  --chip-b:#d9e1ef;
+  --accent:#0ea5e9; /* mavi vurgu */
+}
+
+/* Arkaplan/metin */
+:root[data-theme="light"] html,
+:root[data-theme="light"] body{
+  background:var(--bg); color:var(--ink);
+}
+
+/* Topbar */
+:root[data-theme="light"] .topbar{
+  background:linear-gradient(#f7f9fd,#eef3fb);
+  border-bottom:1px solid var(--line);
+}
+:root[data-theme="light"] .brand h1{ color:var(--ink) }
+:root[data-theme="light"] .crumbs{ color:var(--muted) }
+
+/* Tema butonu */
+:root[data-theme="light"] .theme-toggle{
+  background:#fff; color:var(--ink); border-color:var(--line);
+}
+
+/* HERO kartları */
+:root[data-theme="light"] .card{
+  background:linear-gradient(180deg,#ffffff,#fafcff);
+  border-color:var(--line);
+  box-shadow:0 8px 22px rgba(17,24,39,.08);
+}
+:root[data-theme="light"] .card.done::after{
+  box-shadow: inset 0 0 0 1px rgba(14,165,233,.25);
+}
+:root[data-theme="light"] .badge{
+  background:radial-gradient(64% 64% at 30% 30%, rgba(14,165,233,.25), rgba(14,165,233,.10) 60%, rgba(14,165,233,.06) 100%);
+  border-color:rgba(14,165,233,.35);
+  color:#0b5e87;
+}
+:root[data-theme="light"] .title{ color:#0f172a }
+:root[data-theme="light"] .sub{ color:var(--muted) }
+:root[data-theme="light"] .progress{ background:#e9eef6; border-color:#dfe7f3 }
+:root[data-theme="light"] .progress > span{
+  background:linear-gradient(90deg,#0ea5e9,#38bdf8);
+  box-shadow:0 0 6px rgba(14,165,233,.25) inset;
+}
+
+/* "Diğer sûreler" çipleri */
+:root[data-theme="light"] .chip{
+  background:var(--chip); border-color:var(--chip-b); color:#1f2937;
+}
+:root[data-theme="light"] .chip:hover{ border-color:#b9c6db }
+
+/* Sûre görünümü */
+:root[data-theme="light"] .back,
+:root[data-theme="light"] .tts-controls .btn{
+  background:#fff; color:#0f172a; border-color:var(--line);
+}
+:root[data-theme="light"] .ayah-card{
+  background:#ffffff; border-color:#e3eaf4; color:#111827;
+}
+:root[data-theme="light"] .ayah-card .note{ color:#4b5563 }
+:root[data-theme="light"] .ayah-card .anum{
+  background:#f3f6fb; border-color:#e0e7f1; color:#64748b;
+}
+:root[data-theme="light"] .ayah-card.reading{
+  outline:2px solid #0ea5e9; box-shadow:0 0 0 3px rgba(14,165,233,.15);
+}
+:root[data-theme="light"] .ayah-card.basmala{
+  border-color:#c3e3f6;
+  background:linear-gradient(180deg, rgba(14,165,233,.10), rgba(14,165,233,.04));
+}
+
+/* Footer */
+:root[data-theme="light"] .foot{
+  border-top:1px solid var(--line); color:#64748b; background:transparent;
+}
+
+
 /* Footer */
 .foot{ border-top:1px solid var(--line); color:var(--muted); padding:18px 16px; text-align:center }
 .foot small div{ line-height:1.4 }
