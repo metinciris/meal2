@@ -126,3 +126,14 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui
 .loading-quote{ font-weight: 500; margin-bottom: 12px; color:#e5e7eb }
 .loading-spin{ opacity:.9; animation: pulse 1s infinite ease-in-out }
 @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+/* Diğer sûreler (kollaps) daha sıkı görünsün */
+.others summary{
+  margin: 16px 0 6px 2px;
+  cursor: pointer;
+  color: var(--muted);
+}
+.surah-list.compact .surah-btn{
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+}
