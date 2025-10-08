@@ -1,65 +1,82 @@
 :root{
-  --bg:#0b1220; --panel:#0f172a; --card:#111827; --ink:#e7ebf3; --muted:#9aa6b2;
-  --accent:#10b981; --accent-ink:#053; --chip:#263243; --line:#1b2740;
+  --bg:#0b1220; --panel:#0f172a; --card:#0f1829; --ink:#e8edf7; --muted:#9aa6b2;
+  --accent:#10b981; --line:#20304a; --chip:#222e41; --chip-b:#33445f;
 }
 
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.container{max-width:1160px;margin:0 auto;padding:22px 16px}
 
-.container{max-width:1120px;margin:0 auto;padding:20px 16px}
-
-.topbar{
-  position:sticky; top:0; z-index:10;
-  background:linear-gradient(#0b1220,#0a1426);
-  border-bottom:1px solid var(--line);
-  padding:10px 16px 6px;
-}
+.topbar{position:sticky;top:0;z-index:10;background:linear-gradient(#0b1220,#0a1426);border-bottom:1px solid var(--line);padding:10px 16px 6px}
 .brand h1{margin:0 0 4px 0;font-size:20px}
 .crumbs{color:var(--muted);font-size:13px}
 
-/* ====== Ana sayfa ====== */
-.home{display:flex;flex-direction:column;gap:22px;align-items:center}
+/* ====== Home layout ====== */
+.home{display:flex;flex-direction:column;gap:28px;align-items:center}
 
-/* Baş grid (yalnız meali olanlar) */
+/* Hero grid: merkezde 1/2/3 kolon */
 .hero{
   width:100%;
-  display:grid; gap:16px;
-  grid-template-columns: repeat(1, minmax(0,1fr));
+  display:grid; gap:18px;
+  grid-template-columns: 1fr;
+  place-items: stretch;
 }
-@media (min-width:640px){ .hero{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
-@media (min-width:1024px){ .hero{ grid-template-columns: repeat(3, minmax(0,1fr)); } }
-@media (min-width:1280px){ .hero{ grid-template-columns: repeat(4, minmax(0,1fr)); } }
+@media (min-width:720px){ .hero{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (min-width:1100px){ .hero{ grid-template-columns: repeat(3, minmax(0,1fr)); } }
 
+/* Büyük kart */
 .card{
-  background:var(--card);
+  position:relative;
+  display:flex; flex-direction:column; gap:10px;
+  padding:18px 18px 16px;
+  border-radius:18px;
+  background:linear-gradient(180deg, #0f1a2c, #0d1728);
   border:1px solid var(--line);
-  border-radius:16px;
-  padding:16px 14px;
+  box-shadow:0 6px 20px rgba(0,0,0,.25);
   cursor:pointer;
-  transition:transform .08s ease, box-shadow .18s ease, border-color .2s ease, background .2s ease;
+  transition:transform .08s ease, box-shadow .18s ease, border-color .18s ease;
 }
-.card:hover{ transform:translateY(-1px); box-shadow:0 10px 22px rgba(0,0,0,.25); border-color:#2a3a55 }
-.card.done{
-  background:linear-gradient(180deg, rgba(16,185,129,.12), rgba(16,185,129,.04));
-  border-color:#2f6f5b;
+.card:hover{ transform:translateY(-2px); box-shadow:0 14px 28px rgba(0,0,0,.28); border-color:#2a3a55 }
+.card.done::after{
+  content:""; position:absolute; inset:0;
+  border-radius:18px; pointer-events:none;
+  box-shadow: inset 0 0 0 1px rgba(16,185,129,.25);
 }
-.card .title{font-weight:800; letter-spacing:.2px}
-.card .sub{color:var(--muted); font-size:12px; margin-top:4px}
 
-/* Ayraç + diğerleri */
-.section-title{
-  width:100%;
-  display:flex; align-items:center; gap:12px; color:var(--muted); font-weight:700;
+/* Kart içi */
+.card .head{display:flex;align-items:center;gap:10px}
+.badge{
+  flex:0 0 auto;
+  width:44px;height:44px;border-radius:12px;
+  background:radial-gradient(64% 64% at 30% 30%, rgba(16,185,129,.35), rgba(16,185,129,.12) 60%, rgba(16,185,129,.08) 100%);
+  border:1px solid rgba(16,185,129,.35);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;color:#bff3dc;
 }
+.title{font-size:20px;font-weight:800;letter-spacing:.2px}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+
+/* İlerleme çubuğu */
+.progress{
+  height:8px;border-radius:999px;background:#1a2740;border:1px solid #21304a; overflow:hidden
+}
+.progress > span{
+  display:block;height:100%;background:linear-gradient(90deg,#10b981,#34d399);
+  width:0%; transition:width .35s ease;
+  box-shadow:0 0 8px rgba(16,185,129,.35) inset;
+}
+
+/* Section title + chips */
+.section-title{width:100%;display:flex;align-items:center;gap:12px;color:var(--muted);font-weight:700}
 .section-title .line{flex:1;height:1px;background:var(--line)}
 .section-title button{all:unset;cursor:pointer;color:var(--muted)}
 .section-title button:hover{color:#c4ccd7}
 
-.chips{width:100%; display:grid; gap:10px; grid-template-columns: repeat(auto-fill,minmax(150px,1fr));}
+.chips{width:100%;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 .chip{
-  background:var(--chip); border:1px solid #314059; color:#d7dee9;
-  padding:10px 12px; border-radius:12px; text-align:center; cursor:pointer;
-  transition:transform .06s ease, border-color .2s ease, background .2s ease;
+  background:var(--chip);border:1px solid var(--chip-b);color:#d7dee9;
+  padding:10px 12px;border-radius:12px;text-align:center;cursor:pointer;
+  transition:transform .06s ease,border-color .2s ease,background .2s ease;
 }
 .chip:hover{ transform:translateY(-1px); border-color:#4b6285 }
 
@@ -74,21 +91,16 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui
 .tts-controls .opt{ color:var(--muted); font-size:13px; display:flex; gap:6px; align-items:center; margin-left:8px }
 
 .ayah-list{ display:flex; flex-direction:column; gap:12px; max-width:860px; margin:0 auto }
-.ayah-card{ position:relative; background:var(--card); border:1px solid #26324a; border-radius:14px; padding:14px }
+.ayah-card{ position:relative; background:#101a2d; border:1px solid #26324a; border-radius:14px; padding:14px }
 .ayah-card .note{ margin-top:8px; color:var(--muted); font-size:14px }
-.ayah-card .anum{
-  position:absolute; top:8px; right:10px; background:rgba(255,255,255,.08);
-  border:1px solid #374151; color:#9ca3af; font-size:12px; padding:2px 6px; border-radius:8px;
-  opacity:0; transition:opacity .15s ease;
-}
+.ayah-card .anum{ position:absolute; top:8px; right:10px; background:rgba(255,255,255,.08); border:1px solid #374151; color:#9ca3af; font-size:12px; padding:2px 6px; border-radius:8px; opacity:0; transition:opacity .15s ease }
 .ayah-card:hover .anum, .ayah-card.shownum .anum{ opacity:.95 }
 .ayah-card.reading{ outline:2px solid #10b981; box-shadow:0 0 0 3px rgba(16,185,129,.15) }
 .ayah-card.basmala{ border-color:#3b8261; background:linear-gradient(180deg, rgba(16,185,129,.08), rgba(16,185,129,.03)) }
 .bsm-text{ margin:0; font-style:italic }
 
-/* Alt bilgi */
+/* Footer */
 .foot{ border-top:1px solid var(--line); color:var(--muted); padding:18px 16px; text-align:center }
 .foot small div{ line-height:1.4 }
 
-/* Yükleniyor overlay artık kullanılmıyor */
 .loading{ display:none }
