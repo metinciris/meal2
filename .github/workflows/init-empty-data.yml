@@ -8,7 +8,7 @@ on:
       - ".github/workflows/init-empty-data.yml"
 
 permissions:
-  contents: write  # data/* içine commit atacağız
+  contents: write
 
 jobs:
   build-empty:
@@ -34,25 +34,21 @@ jobs:
             fs.mkdirSync(surahDir, { recursive: true });
 
             // 1) Boş normalized.json
-            const normalized = { rows: [], lastUpdated: null };
-            fs.writeFileSync(path.join(dataDir, 'normalized.json'), JSON.stringify(normalized, null, 2), 'utf8');
+            fs.writeFileSync(path.join(dataDir, 'normalized.json'),
+              JSON.stringify({ rows: [], lastUpdated: null }, null, 2), 'utf8');
 
             // 2) 114 adet boş sûre dosyası
             for (let s = 1; s <= 114; s++) {
-              const file = path.join(surahDir, `${s}.json`);
               const payload = { sure: s, rows: [], lastUpdated: null };
-              fs.writeFileSync(file, JSON.stringify(payload, null, 2), 'utf8');
+              fs.writeFileSync(path.join(surahDir, `${s}.json`),
+                JSON.stringify(payload, null, 2), 'utf8');
             }
 
-            // 3) Manifest (tamamı 0/total)
+            // 3) Manifest (0/total)
             const progress = [];
-            for (let s = 1; s <= 114; s++) {
-              progress.push({ s, done: 0, total: AYAHS[s] });
-            }
-            const manifest = { lastUpdated: null, progress };
-            fs.writeFileSync(path.join(dataDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
-
-            core.info('Empty dataset generated under data/{normalized.json, manifest.json, surah/*.json}');
+            for (let s = 1; s <= 114; s++) progress.push({ s, done: 0, total: AYAHS[s] });
+            fs.writeFileSync(path.join(dataDir, 'manifest.json'),
+              JSON.stringify({ lastUpdated: null, progress }, null, 2), 'utf8');
 
       - name: Commit data/*
         uses: stefanzweifel/git-auto-commit-action@v5
