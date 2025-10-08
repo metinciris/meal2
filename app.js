@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   showLoading(true);
   try {
     await Promise.all([ loadAll(), initTTS(), loadTTSDict() ]);
-    renderHome();
+    ();
   } catch (e) {
     console.error(e);
     alert('Veri yüklenemedi.');
@@ -91,15 +91,14 @@ function renderHome(){
   for (let s=1; s<=114; s++){
     let done = 0;
     for (let a=1; a<=AYAHS[s]; a++) if (byKey.has(`${s}:${a}`)) done++;
-    if (done > 0) withData.push({ s, done });
+    if (done > 0) withData.push({ s, done, total: AYAHS[s] });
     else withoutData.push({ s });
   }
 
-  // ANA SARICI
   const home = document.createElement('div');
   home.className = 'home';
 
-  // 1) Kahraman grid (meali olanlar)
+  // --- Hero grid: büyük kartlar ---
   const hero = document.createElement('div');
   hero.className = 'hero';
 
@@ -109,15 +108,55 @@ function renderHome(){
     empty.innerHTML = `<div class="title">Henüz meâl girilmemiş</div><div class="sub">Issues → Meal Ekle formuyla başlayın</div>`;
     hero.appendChild(empty);
   } else {
-    for (const {s, done} of withData) {
+    for (const {s, done, total} of withData) {
       const card = document.createElement('button');
       card.className = 'card done';
-      card.innerHTML = `<div class="title">${s} - ${NAMES[s]}</div><div class="sub">${done}/${AYAHS[s]} tamamlandı</div>`;
+      const pct = Math.min(100, Math.round((done/total)*100));
+
+      card.innerHTML = `
+        <div class="head">
+          <div class="badge">${s}</div>
+          <div>
+            <div class="title">${NAMES[s]}</div>
+            <div class="sub">${done}/${total} tamamlandı</div>
+          </div>
+        </div>
+        <div class="progress"><span style="width:${pct}%;"></span></div>
+      `;
       card.onclick = () => { ttsStop(); openSurah(s); };
       hero.appendChild(card);
     }
   }
   home.appendChild(hero);
+
+  // --- Diğer sûreler: sessiz çipler ---
+  if (withoutData.length){
+    const title = document.createElement('div');
+    title.className = 'section-title';
+    const btn = document.createElement('button');
+    btn.textContent = `Diğer sûreler (${withoutData.length})`;
+    const line = document.createElement('div'); line.className = 'line';
+    title.appendChild(btn); title.appendChild(line);
+    home.appendChild(title);
+
+    const chips = document.createElement('div');
+    chips.className = 'chips';
+    chips.hidden = false; // istersen true yapıp butonla aç-kapa yapabilirsin
+    btn.onclick = () => { chips.hidden = !chips.hidden; };
+
+    for (const {s} of withoutData) {
+      const chip = document.createElement('button');
+      chip.className = 'chip';
+      chip.textContent = `${s} - ${NAMES[s]}`;
+      chip.onclick = () => { ttsStop(); openSurah(s); };
+      chips.appendChild(chip);
+    }
+    home.appendChild(chips);
+  }
+
+  $('#surahList').replaceChildren(home);
+}
+
 
   // 2) Ayraç + Diğer sûreler (kollaps yerine basit aç/kapa)
   if (withoutData.length){
