@@ -20,31 +20,37 @@ jobs:
             const fs = require('fs');
             const path = require('path');
 
-            // ---- BEYAZ LİSTE: sadece bunların issue'ları işleme alınır ----
+            // ---- BEYAZ LİSTE: sadece bunların issue'ları işlenir ----
             const ALLOWED = new Set([
-              'metinciris', // kendi kullanıcı adın
-              // 'arkadas1', 'arkadas2',
+              'metinciris', // ← Kendi kullanıcı adın burada OLMALI
             ]);
 
             // ---- Yardımcılar ----
-            const AYAHS = [0,7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,110,98,135,112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,59,37,35,38,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6];
+            const AYAHS = [0,7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,110,98,135,
+              112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,59,37,35,38,29,18,45,
+              60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,
+              36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6];
 
             const toInt = (x)=>{ const n = parseInt(String(x??'').trim(),10); return Number.isFinite(n)?n:NaN; };
             const pick = (body,labelPattern)=>{
+              // Issue Forms "### Etiket" başlıklarını yakalar
               const re = new RegExp(`###\\s*(?:${labelPattern})\\s*\\n([\\s\\S]*?)(?=\\n###|$)`,'i');
               const m = (body||'').match(re); let v = m ? (m[1]||'').trim() : '';
               if (/^_?no response_?$/i.test(v)) v = '';
               return v;
             };
             const parseSingleFromTitle = (title)=>{
+              // Başlık: [Meal] Sûre 1 : Âyet 2
               const m = /\[Meal\].*?S[ûu]re\s+(\d{1,3}).*?[ÂA]yet\s+(\d{1,3})/i.exec(title||'');
               return m ? { sure: toInt(m[1]), ayet: toInt(m[2]) } : null;
             };
             const parseSingleFromBody = (body)=>{
-              const sure = toInt(pick(body,"S[ûu]re\\s*\\(1-114\\)|Sure\\s*\\(1-114\\)"));
-              const ayet = toInt(pick(body,"[ÂA]yet\\s*No"));
+              // Şu etiketlerden biri olsun: "Sûre (1-114)" veya "Sure (1-114)"
+              const sure = toInt(pick(body,"S[ûu]re\\s*\\(1-114\\)|Sure\\s*\\(1-114\\)|S[ûu]re|Sure"));
+              const ayet = toInt(pick(body,"[ÂA]yet\\s*No|Ayet\\s*No|[ÂA]yet|Ayet"));
+              // Meal alan adları: "Meal Metni" ya da "Meal"
               const meal = pick(body,"Meal(?:\\s*Metni)?|Meal");
-              const aciklama = pick(body,"Aç(?:ı|i)klama(?:\\s*\\(opsiyonel\\))?");
+              const aciklama = pick(body,"Aç(?:ı|i)klama(?:\\s*\\(opsiyonel\\))?|Acilklama|Aciklama");
               if (!Number.isFinite(sure)||!Number.isFinite(ayet)||!meal) return null;
               return { sure, ayet, meal, aciklama };
             };
@@ -60,7 +66,7 @@ jobs:
               return out.filter(x=>x.meal && x.meal.trim());
             };
             const parseBulkFromBody = (body)=>{
-              const sure = toInt(pick(body,"S[ûu]re\\s*\\(1-114\\)|Sure\\s*\\(1-114\\)"));
+              const sure = toInt(pick(body,"S[ûu]re\\s*\\(1-114\\)|Sure\\s*\\(1-114\\)|S[ûu]re|Sure"));
               const blob = pick(body,"Toplu\\s*Metin|Toplu\\s*Meal|Toplu|Metin");
               if (!Number.isFinite(sure)||!blob) return null;
               return parseBulkBlock(blob).map(x=>({sure, ayet:x.ayet, meal:x.meal, aciklama:''}));
@@ -68,6 +74,8 @@ jobs:
 
             // ---- Issues tarama: last-write-wins ----
             const latest = new Map(); // "s:a" -> record
+            let scanned=0, accepted=0;
+
             for (const state of ['open','closed']){
               let page=1;
               while(true){
@@ -80,6 +88,8 @@ jobs:
 
                 for (const it of items){
                   if (it.pull_request) continue;
+                  scanned++;
+
                   const author = it.user?.login || '';
                   if (!ALLOWED.has(author)) continue;
 
@@ -87,12 +97,14 @@ jobs:
                   const body  = it.body  || '';
 
                   if (/^\s*\[BulkMeal\]/i.test(title)){
-                    const pack = parseBulkFromBody(body); if (!pack) continue;
+                    const pack = parseBulkFromBody(body);
+                    if (!pack) continue;
                     for (const r of pack){
                       const key = `${r.sure}:${r.ayet}`;
                       const rec = { sure:r.sure, ayet:r.ayet, meal:r.meal.trim(), aciklama:'', last: it.updated_at };
                       const prev = latest.get(key);
                       if (!prev || rec.last > prev.last) latest.set(key, rec);
+                      accepted++;
                     }
                   } else if (/^\s*\[Meal\]/i.test(title)){
                     let p = parseSingleFromBody(body);
@@ -100,7 +112,7 @@ jobs:
                       const ft = parseSingleFromTitle(title);
                       if (ft){
                         p = { ...ft, meal: pick(body,"Meal(?:\\s*Metni)?|Meal"),
-                                   aciklama: pick(body,"Aç(?:ı|i)klama(?:\\s*\\(opsiyonel\\))?") };
+                                   aciklama: pick(body,"Aç(?:ı|i)klama(?:\\s*\\(opsiyonel\\))?|Acilklama|Aciklama") };
                       }
                     }
                     if (!p || !p.meal) continue;
@@ -108,23 +120,24 @@ jobs:
                     const rec = { sure:p.sure, ayet:p.ayet, meal:p.meal.trim(), aciklama:(p.aciklama||'').trim(), last: it.updated_at };
                     const prev = latest.get(key);
                     if (!prev || rec.last > prev.last) latest.set(key, rec);
+                    accepted++;
                   }
                 }
                 page++;
               }
             }
 
-            // ---- normalized.json ----
             const rows = [...latest.values()].sort((a,b)=> a.sure - b.sure || a.ayet - b.ayet);
             const lastUpdated = rows.reduce((m,x)=> m && m>x.last ? m : x.last, null);
 
+            // ---- Yaz ----
             const dataDir = path.join(process.cwd(),'data');
             const surahDir = path.join(dataDir,'surah');
             fs.mkdirSync(surahDir, { recursive:true });
             fs.writeFileSync(path.join(dataDir,'normalized.json'),
               JSON.stringify({ rows, lastUpdated }, null, 2), 'utf8');
 
-            // ---- per-sûre + manifest ----
+            // per-sûre + manifest
             const bySurah = new Map();
             for (const r of rows){
               if (!bySurah.has(r.sure)) bySurah.set(r.sure, []);
@@ -132,9 +145,11 @@ jobs:
             }
             for (let s=1; s<=114; s++){
               const list = (bySurah.get(s) || []).sort((a,b)=>a.ayet-b.ayet);
-              const payload = { sure: s, rows: list, lastUpdated };
-              fs.writeFileSync(path.join(surahDir, `${s}.json`), JSON.stringify(payload,null,2), 'utf8');
+              fs.writeFileSync(path.join(surahDir, `${s}.json`),
+                JSON.stringify({ sure: s, rows: list, lastUpdated }, null, 2), 'utf8');
+              core.info(`Surah ${s} → ${list.length} ayet`);
             }
+
             const progress = [];
             for (let s=1; s<=114; s++){
               const done = (bySurah.get(s) || []).length;
@@ -142,6 +157,9 @@ jobs:
             }
             fs.writeFileSync(path.join(dataDir,'manifest.json'),
               JSON.stringify({ lastUpdated, progress }, null, 2), 'utf8');
+
+            core.info(`Scanned: ${scanned}, Accepted: ${accepted}, Rows: ${rows.length}`);
+            core.info(`lastUpdated: ${lastUpdated || '-'}`);
 
       - name: Commit data/**
         uses: stefanzweifel/git-auto-commit-action@v5
