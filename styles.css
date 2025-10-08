@@ -1,79 +1,75 @@
 :root{
-  --bg:#0b1220; --card:#111827; --ink:#e5e7eb; --muted:#9ca3af;
-  --accent:#10b981; --accentTxt:#053; --chip:#2a3444; --line:#273246;
+  --bg:#0b1220; --panel:#0f172a; --card:#111827; --ink:#e7ebf3; --muted:#9aa6b2;
+  --accent:#10b981; --accent-ink:#053; --chip:#263243; --line:#1b2740;
 }
 
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 
-.container{max-width:1200px;margin:0 auto;padding:20px 16px}
+.container{max-width:1120px;margin:0 auto;padding:20px 16px}
 
-/* Topbar */
-.topbar{position:sticky;top:0;z-index:10;background:linear-gradient(#0b1220,#0a1020);border-bottom:1px solid #121b2b}
-.brand h1{margin:10px 0 2px 0;font-size:20px}
-.crumbs{color:var(--muted);font-size:13px;margin-bottom:10px}
-
-/* ====== Ana sayfa düzeni ====== */
-.home{
-  display:grid; gap:24px;
-  grid-template-columns: 1fr;
+.topbar{
+  position:sticky; top:0; z-index:10;
+  background:linear-gradient(#0b1220,#0a1426);
+  border-bottom:1px solid var(--line);
+  padding:10px 16px 6px;
 }
-@media (min-width: 1024px){
-  .home{ grid-template-columns: 2fr 1fr; align-items:start; }
-}
+.brand h1{margin:0 0 4px 0;font-size:20px}
+.crumbs{color:var(--muted);font-size:13px}
 
-/* Sol taraf: kahraman grid (yalnızca meali olanlar) */
-.hero-grid{
+/* ====== Ana sayfa ====== */
+.home{display:flex;flex-direction:column;gap:22px;align-items:center}
+
+/* Baş grid (yalnız meali olanlar) */
+.hero{
+  width:100%;
   display:grid; gap:16px;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  align-items:stretch;
+  grid-template-columns: repeat(1, minmax(0,1fr));
 }
+@media (min-width:640px){ .hero{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (min-width:1024px){ .hero{ grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (min-width:1280px){ .hero{ grid-template-columns: repeat(4, minmax(0,1fr)); } }
 
-/* Sûre kartı */
-.surah-card{
-  display:flex; flex-direction:column; justify-content:center; gap:6px;
-  padding:18px 16px; border-radius:16px;
-  background:var(--card); border:1px solid var(--line);
-  transition:transform .08s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
-  cursor:pointer; text-align:left;
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:16px 14px;
+  cursor:pointer;
+  transition:transform .08s ease, box-shadow .18s ease, border-color .2s ease, background .2s ease;
 }
-.surah-card.done{
+.card:hover{ transform:translateY(-1px); box-shadow:0 10px 22px rgba(0,0,0,.25); border-color:#2a3a55 }
+.card.done{
   background:linear-gradient(180deg, rgba(16,185,129,.12), rgba(16,185,129,.04));
   border-color:#2f6f5b;
 }
-.surah-card:hover{ transform:translateY(-1px); box-shadow:0 10px 22px rgba(0,0,0,.25); border-color:#3a4c66 }
-.surah-card .title{ font-weight:800; letter-spacing:.2px }
-.surah-card .sub{ color:var(--muted); font-size:12px }
+.card .title{font-weight:800; letter-spacing:.2px}
+.card .sub{color:var(--muted); font-size:12px; margin-top:4px}
 
-/* Sağ taraf: Diğer sûreler (kollaps + çip grid) */
-.sidebar{position:sticky; top:76px}
-.others details{ background:transparent; border:none }
-.others summary{
-  list-style:none; cursor:pointer; user-select:none; color:var(--muted);
-  font-weight:700; margin-bottom:10px;
+/* Ayraç + diğerleri */
+.section-title{
+  width:100%;
+  display:flex; align-items:center; gap:12px; color:var(--muted); font-weight:700;
 }
-.others summary::-webkit-details-marker{display:none}
-.others summary:before{content:"▾ "; opacity:.7}
-.others[open] summary:before{content:"▴ "; opacity:.7}
+.section-title .line{flex:1;height:1px;background:var(--line)}
+.section-title button{all:unset;cursor:pointer;color:var(--muted)}
+.section-title button:hover{color:#c4ccd7}
 
-.chip-grid{
-  display:grid; gap:10px;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-}
+.chips{width:100%; display:grid; gap:10px; grid-template-columns: repeat(auto-fill,minmax(150px,1fr));}
 .chip{
-  background:var(--chip); border:1px solid #35435a; color:#d7dee9;
+  background:var(--chip); border:1px solid #314059; color:#d7dee9;
   padding:10px 12px; border-radius:12px; text-align:center; cursor:pointer;
   transition:transform .06s ease, border-color .2s ease, background .2s ease;
 }
-.chip:hover{ transform:translateY(-1px); border-color:#4d5f7d; }
+.chip:hover{ transform:translateY(-1px); border-color:#4b6285 }
 
 /* ====== Sûre görünümü ====== */
 .surah-view{ margin-top:12px }
-.back{ background:#0b1220; border:1px solid #1b2740; color:var(--ink); padding:8px 12px; border-radius:10px; cursor:pointer }
-#surahTitle{ margin:10px 0 14px 0; font-weight: 800 }
+.back{ background:#0b1220; border:1px solid var(--line); color:var(--ink); padding:8px 12px; border-radius:10px; cursor:pointer }
+#surahTitle{ margin:10px 0 14px 0; font-weight:800 }
 
 .tts-controls{ display:flex; gap:8px; align-items:center; margin:6px 0 12px 0 }
-.tts-controls .btn{ background:#0b1220; border:1px solid #1b2740; color:var(--ink); padding:6px 10px; border-radius:10px; cursor:pointer }
+.tts-controls .btn{ background:#0b1220; border:1px solid var(--line); color:var(--ink); padding:6px 10px; border-radius:10px; cursor:pointer }
 .tts-controls .btn:disabled{ opacity:.5; cursor:default }
 .tts-controls .opt{ color:var(--muted); font-size:13px; display:flex; gap:6px; align-items:center; margin-left:8px }
 
@@ -87,13 +83,12 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-u
 }
 .ayah-card:hover .anum, .ayah-card.shownum .anum{ opacity:.95 }
 .ayah-card.reading{ outline:2px solid #10b981; box-shadow:0 0 0 3px rgba(16,185,129,.15) }
-
 .ayah-card.basmala{ border-color:#3b8261; background:linear-gradient(180deg, rgba(16,185,129,.08), rgba(16,185,129,.03)) }
 .bsm-text{ margin:0; font-style:italic }
 
 /* Alt bilgi */
-.foot{ border-top:1px solid #121b2b; color:var(--muted); padding:14px 16px; text-align:center }
+.foot{ border-top:1px solid var(--line); color:var(--muted); padding:18px 16px; text-align:center }
 .foot small div{ line-height:1.4 }
 
-/* (Kalıntı) Yükleniyor katmanı (artık normalde görünmez) */
+/* Yükleniyor overlay artık kullanılmıyor */
 .loading{ display:none }
