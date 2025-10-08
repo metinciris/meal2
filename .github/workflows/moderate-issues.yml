@@ -1,44 +1,25 @@
 name: Moderate Issues
 on:
-  issues:
-    types: [opened]
-
-permissions:
-  contents: read
-  issues: write
-
+  issues: { types: [opened] }
+permissions: { contents: read, issues: write }
 jobs:
   close_unallowed:
     runs-on: ubuntu-latest
     steps:
-      - name: Check author and close if not allowed
-        uses: actions/github-script@v7
+      - uses: actions/github-script@v7
         with:
           script: |
-            const allowed = new Set([
-              'metinciris', // ← sen
-              // 'baska-kullanici',
-            ]);
+            const allowed = new Set(['metinciris']); // beyaz liste
             const issue = context.payload.issue;
             const author = issue.user.login;
-
             if (!allowed.has(author)) {
-              core.info(`Closing issue from @${author}`);
-
               await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner: context.repo.owner, repo: context.repo.repo,
                 issue_number: issue.number,
-                body: "Bu depo yalnız belirli kullanıcıların kayıtlarını işler. Katkın için teşekkürler; ancak bu issue otomatik olarak kapatıldı."
+                body: "Bu depo yalnız belirli kullanıcıların kayıtlarını işler. Teşekkürler; issue otomatik kapatıldı."
               });
-
               await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                state: "closed",
-                state_reason: "not_planned"
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issue.number, state: "closed", state_reason: "not_planned"
               });
-            } else {
-              core.info(`Allowed author: @${author} — nothing to do.`);
             }
