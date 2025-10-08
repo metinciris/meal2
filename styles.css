@@ -44,17 +44,22 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui
 }
 
 /* Kart içi */
-.card .head{display:flex;align-items:center;gap:10px}
+/* Kart başlığı belirgin olsun */
+.card .head{display:flex;align-items:center;gap:12px}
 .badge{
-  flex:0 0 auto;
-  width:44px;height:44px;border-radius:12px;
-  background:radial-gradient(64% 64% at 30% 30%, rgba(16,185,129,.35), rgba(16,185,129,.12) 60%, rgba(16,185,129,.08) 100%);
-  border:1px solid rgba(16,185,129,.35);
-  display:flex;align-items:center;justify-content:center;
-  font-weight:800;color:#bff3dc;
+  flex:0 0 auto; width:48px; height:48px; border-radius:14px;
+  background:radial-gradient(64% 64% at 30% 30%, rgba(16,185,129,.38), rgba(16,185,129,.12) 60%, rgba(16,185,129,.08) 100%);
+  border:1px solid rgba(16,185,129,.4);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:900; color:#c9f5e5; font-size:18px;
 }
-.title{font-size:20px;font-weight:800;letter-spacing:.2px}
-.sub{color:var(--muted);font-size:13px;margin-top:2px}
+.title{
+  font-size:22px; line-height:1.2; font-weight:900; letter-spacing:.2px;
+  color:#eaf1fb;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;
+}
+.sub{ color:#9aa6b2; font-size:13px; margin-top:3px }
+
 
 /* İlerleme çubuğu */
 .progress{
