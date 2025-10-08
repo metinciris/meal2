@@ -1,4 +1,54 @@
 {
-  "rows": [],
-  "lastUpdated": null
+  "rows": [
+    {
+      "sure": 1,
+      "ayet": 1,
+      "meal": "Metni",
+      "aciklama": "_No response_",
+      "last": "2025-10-08T14:43:29Z"
+    },
+    {
+      "sure": 1,
+      "ayet": 2,
+      "meal": "Metni",
+      "aciklama": "_No response_",
+      "last": "2025-10-08T14:30:19Z"
+    },
+    {
+      "sure": 1,
+      "ayet": 3,
+      "meal": "Metni",
+      "aciklama": "_No response_",
+      "last": "2025-10-08T14:30:44Z"
+    },
+    {
+      "sure": 1,
+      "ayet": 4,
+      "meal": "Metni",
+      "aciklama": "_No response_",
+      "last": "2025-10-08T14:31:08Z"
+    },
+    {
+      "sure": 1,
+      "ayet": 5,
+      "meal": "Metni",
+      "aciklama": "_No response_",
+      "last": "2025-10-08T14:31:34Z"
+    },
+    {
+      "sure": 1,
+      "ayet": 6,
+      "meal": "Metni",
+      "aciklama": "_No response_",
+      "last": "2025-10-08T14:32:01Z"
+    },
+    {
+      "sure": 1,
+      "ayet": 7,
+      "meal": "Metni",
+      "aciklama": "_No response_",
+      "last": "2025-10-08T14:40:40Z"
+    }
+  ],
+  "lastUpdated": "2025-10-08T14:43:29Z"
 }
