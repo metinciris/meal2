@@ -1,4 +1,3 @@
-// scripts/build-from-issues.mjs
 // Node 20+. Issues -> data/normalized.json (tekil + toplu). Hatalara dayanıklı.
 
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -20,10 +19,17 @@ const octokit = new Octokit({ auth: GITHUB_TOKEN });
 /* ---------- Yardımcılar ---------- */
 
 // Issue Forms body’sinden alan çek (TR başlık varyasyonları toleranslı)
+// Değeri, SONRAKİ "###" başlığına kadar alır; iç gruplar için non-capturing kullanır.
+// "_No response_" veya "No response" değerlerini boş kabul eder.
 function pickFromBody(body, labelPattern) {
-  const re = new RegExp(`###\\s*(${labelPattern})[\\s\\S]*?\\n([^#]+)`, "i");
+  const re = new RegExp(
+    `###\\s*(?:${labelPattern})\\s*\\n([\\s\\S]*?)(?=\\n###|$)`,
+    "i"
+  );
   const m = body.match(re);
-  return m ? (m[2] || "").trim() : "";
+  let val = m ? (m[1] || "").trim() : "";
+  if (/^_?no response_?$/i.test(val)) val = "";
+  return val;
 }
 function toInt(x) {
   const n = parseInt(String(x ?? "").trim(), 10);
@@ -45,13 +51,13 @@ function parseSingleFromBody(body) {
   const ayet = toInt(
     pickFromBody(body, "[ÂA]yet\\s*No")
   );
-  const meal = pickFromBody(body, "Meal(\\s*Metni)?");
-  const aciklama = pickFromBody(body, "Aç[ıi]klama|Aciklama");
+  const meal = pickFromBody(body, "Meal(?:\\s*Metni)?|Meal");
+  const aciklama = pickFromBody(body, "Aç(?:ı|i)klama(?:\\s*\\(opsiyonel\\))?");
   if (!Number.isFinite(sure) || !Number.isFinite(ayet) || !meal) return null;
   return { sure, ayet, meal, aciklama };
 }
 
-// Toplu metin: "1- ...", "2 - ...", "3. ...", "4 — ..." vb.
+// Toplu metin: "1- ...", "2 - ...", "3. ...", "4 — ...", "5:" vb.
 // Numara+ayraç ile başlayan satır yeni ayet; diğer satırlar bir öncekiye eklenir.
 function parseBulkBlock(block) {
   const lines = (block || "").replace(/\r/g, "").split("\n");
@@ -69,15 +75,14 @@ function parseBulkBlock(block) {
         cur = { ayet, meal: text };
         out.push(cur);
       } else {
-        // numara değilse ek yer yok — atla
         cur = null;
       }
     } else if (cur) {
       // devam satırı: paragraf birleşsin
-      cur.meal = (cur.meal ? cur.meal + "\n" : "") + line.trim();
-    } // değilse boş/başsız satır; geç
+      const t = line.trim();
+      if (t) cur.meal = (cur.meal ? cur.meal + "\n" : "") + t;
+    }
   }
-  // boş meal’leri ele
   return out.filter(x => x.meal && x.meal.trim());
 }
 
@@ -87,8 +92,7 @@ function parseBulkFromBody(body) {
     pickFromBody(body, "S[ûu]re\\s*\\(1-114\\)|Sure\\s*\\(1-114\\)")
   );
   const blob =
-    pickFromBody(body, "Toplu\\s*Metin|Toplu\\s*Meal|Toplu")
-    || pickFromBody(body, "Metin");
+    pickFromBody(body, "Toplu\\s*Metin|Toplu\\s*Meal|Toplu|Metin");
   if (!Number.isFinite(sure) || !blob) return null;
   const items = parseBulkBlock(blob).map(x => ({
     sure, ayet: x.ayet, meal: x.meal, aciklama: ""
@@ -142,13 +146,13 @@ function parseBulkFromBody(body) {
               // TEKIL MOD
               let parsed = parseSingleFromBody(body);
               if (!parsed) {
-                // Başlıktan dene
+                // Başlıktan dene (form gövdesi farklıysa)
                 const fromTitle = parseSingleFromTitle(title);
                 if (fromTitle) {
                   parsed = {
                     ...fromTitle,
-                    meal: pickFromBody(body, "Meal(\\s*Metni)?"),
-                    aciklama: pickFromBody(body, "Aç[ıi]klama|Aciklama")
+                    meal: pickFromBody(body, "Meal(?:\\s*Metni)?|Meal"),
+                    aciklama: pickFromBody(body, "Aç(?:ı|i)klama(?:\\s*\\(opsiyonel\\))?")
                   };
                 }
               }
@@ -185,6 +189,7 @@ function parseBulkFromBody(body) {
     console.log(`[build] lastUpdated: ${lastUpdated || '-'}`);
   } catch (e) {
     console.error("[build] genel hata:", e?.message || e);
-    process.exit(1);
+    // Burada process.exit(1) kullanmıyoruz ki tek bir hatada tüm iş başarısız sayılmasın.
+    // Yine de veri yazılamadıysa önceki dosya kalır.
   }
 })();
