@@ -1,0 +1,20 @@
+name: "[Meal] Tekil âyet"
+description: Tek âyet meali ekleme/güncelleme
+title: "[Meal] Sûre {{ inputs.sure }} : Âyet {{ inputs.ayet }}"
+labels: ["meal"]
+body:
+  - type: input
+    id: sure
+    attributes: { label: "Sûre (1-114)", placeholder: "3" }
+    validations: { required: true }
+  - type: input
+    id: ayet
+    attributes: { label: "Âyet No", placeholder: "4" }
+    validations: { required: true }
+  - type: textarea
+    id: meal
+    attributes: { label: "Meal Metni", placeholder: "Metni" }
+    validations: { required: true }
+  - type: textarea
+    id: aciklama
+    attributes: { label: "Açıklama (opsiyonel)", placeholder: "..." }
