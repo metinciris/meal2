@@ -1,0 +1,39 @@
+name: Build JSON from Issues
+
+on:
+  issues:
+    types: [opened, edited, reopened, labeled, unlabeled, closed]
+  workflow_dispatch: {}
+  push:
+    paths:
+      - ".github/workflows/build-data.yml"
+      - "scripts/build-from-issues.mjs"
+      - ".github/ISSUE_TEMPLATE/meal.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm i octokit@3
+
+      - name: Build normalized.json from issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/build-from-issues.mjs
+
+      - name: Commit & push data
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(data): rebuild normalized.json from issues"
+          file_pattern: "data/normalized.json"
