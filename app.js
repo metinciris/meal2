@@ -95,63 +95,57 @@ function renderHome(){
     else withoutData.push({ s });
   }
 
-  const fr = document.createDocumentFragment();
-
-  // Ana kapsayıcı
+  // ANA SARICI
   const home = document.createElement('div');
   home.className = 'home';
 
-  // SOL: meali olanlar (hero-grid)
+  // 1) Kahraman grid (meali olanlar)
   const hero = document.createElement('div');
-  hero.className = 'hero-grid';
-  for (const {s, done} of withData) {
-    const card = document.createElement('button');
-    card.className = 'surah-card done';
-    card.innerHTML = `<div class="title">${s} - ${NAMES[s]}</div><div class="sub">${done}/${AYAHS[s]} tamamlandı</div>`;
-    card.onclick = () => { ttsStop(); openSurah(s); };
-    hero.appendChild(card);
-  }
-  // “hiç yoksa” boş bir mesaj (opsiyonel)
+  hero.className = 'hero';
+
   if (withData.length === 0){
     const empty = document.createElement('div');
-    empty.className = 'surah-card';
+    empty.className = 'card';
     empty.innerHTML = `<div class="title">Henüz meâl girilmemiş</div><div class="sub">Issues → Meal Ekle formuyla başlayın</div>`;
     hero.appendChild(empty);
+  } else {
+    for (const {s, done} of withData) {
+      const card = document.createElement('button');
+      card.className = 'card done';
+      card.innerHTML = `<div class="title">${s} - ${NAMES[s]}</div><div class="sub">${done}/${AYAHS[s]} tamamlandı</div>`;
+      card.onclick = () => { ttsStop(); openSurah(s); };
+      hero.appendChild(card);
+    }
   }
+  home.appendChild(hero);
 
-  // SAĞ: diğer sûreler (kollaps + çip grid)
-  const side = document.createElement('aside');
-  side.className = 'sidebar';
-
+  // 2) Ayraç + Diğer sûreler (kollaps yerine basit aç/kapa)
   if (withoutData.length){
-    const wrap = document.createElement('div');
-    wrap.className = 'others';
+    const title = document.createElement('div');
+    title.className = 'section-title';
+    const btn = document.createElement('button');
+    btn.textContent = `Diğer sûreler (${withoutData.length})`;
+    const line = document.createElement('div'); line.className = 'line';
+    title.appendChild(btn); title.appendChild(line);
+    home.appendChild(title);
 
-    const details = document.createElement('details');
-    details.open = true; // küçük bir açılış hareketi için açık başlayabilir
-    const summary = document.createElement('summary');
-    summary.textContent = `Diğer sûreler (${withoutData.length})`;
-    details.appendChild(summary);
+    const chips = document.createElement('div');
+    chips.className = 'chips';
+    chips.hidden = false; // istersen true yap, butonla açılır kapanır
 
-    const chipGrid = document.createElement('div');
-    chipGrid.className = 'chip-grid';
+    btn.onclick = () => { chips.hidden = !chips.hidden; };
+
     for (const {s} of withoutData) {
       const chip = document.createElement('button');
       chip.className = 'chip';
       chip.textContent = `${s} - ${NAMES[s]}`;
       chip.onclick = () => { ttsStop(); openSurah(s); };
-      chipGrid.appendChild(chip);
+      chips.appendChild(chip);
     }
-    details.appendChild(chipGrid);
-    wrap.appendChild(details);
-    side.appendChild(wrap);
+    home.appendChild(chips);
   }
 
-  home.appendChild(hero);
-  home.appendChild(side);
-  fr.appendChild(home);
-
-  list.replaceChildren(fr);
+  list.replaceChildren(home);
 }
 
 
