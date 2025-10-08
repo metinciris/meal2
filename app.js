@@ -75,6 +75,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+/* ===================== Tema toggle ===================== */
+(function initTheme(){
+  const key = 'theme';
+  const root = document.documentElement;
+  const btn = document.getElementById('themeToggle');
+
+  // Başlangıç: localStorage > sistem tercihi > dark
+  let saved = localStorage.getItem(key);
+  if (!saved) {
+    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    saved = prefersLight ? 'light' : 'dark';
+  }
+  apply(saved);
+
+  btn?.addEventListener('click', () => {
+    const next = (root.getAttribute('data-theme') === 'light') ? 'dark' : 'light';
+    apply(next);
+  });
+
+  function apply(mode){
+    if (mode === 'light') root.setAttribute('data-theme','light');
+    else root.removeAttribute('data-theme'); // dark varsayılan
+    localStorage.setItem(key, mode);
+    if (btn) btn.textContent = (mode === 'light') ? '☀️' : '🌙';
+  }
+})();
+
 /* ===================== DATA ===================== */
 
 async function loadAll(){
