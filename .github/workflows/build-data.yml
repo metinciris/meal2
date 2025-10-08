@@ -6,9 +6,9 @@ on:
   workflow_dispatch: {}
   push:
     paths:
-      - ".github/workflows/build-data.yml"
       - "scripts/build-from-issues.mjs"
-      - ".github/ISSUE_TEMPLATE/meal.yml"
+      - ".github/workflows/build-data.yml"
+      - ".github/ISSUE_TEMPLATE/**"
 
 jobs:
   build:
@@ -24,7 +24,7 @@ jobs:
           node-version: 20
 
       - name: Install deps
-        run: npm i octokit@3
+        run: npm i octokit
 
       - name: Build normalized.json from issues
         env:
