@@ -37,3 +37,38 @@ jobs:
         with:
           commit_message: "chore(data): rebuild normalized.json from issues"
           file_pattern: "data/normalized.json"
+
+name: Moderate Issues
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  close_unallowed:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const allowed = new Set(['metinciris']); // beyaz liste
+            const author = context.payload.issue.user.login;
+            if (!allowed.has(author)) {
+              core.info(`Closing issue from @${author}`);
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                body: "Bu depo yalnız belirli kullanıcıların kayıtlarını işler. Lütfen yanlışlıkla açtıysanız kusura bakmayın. Issue otomatik kapatıldı."
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                state: "closed",
+                state_reason: "not_planned"
+              });
+            } else {
+              core.info(`Allowed author: @${author}`);
+            }
