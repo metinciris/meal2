@@ -1,5 +1,5 @@
 /* sw.js — cache-first (assets), network-first (data) */
-const CACHE = 'meal2-v3';
+const CACHE = 'meal2-v4';
 const ASSETS = [
   './',
   './index.html',
