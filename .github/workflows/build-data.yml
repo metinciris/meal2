@@ -1,40 +1,38 @@
-name: Build JSON from Issues
-
+name: Build Data (Issues → data/*)
 on:
-  issues:
-    types: [opened, edited, reopened, labeled, unlabeled, closed]
-  workflow_dispatch: {}
   push:
-    paths:
-      - "scripts/build-from-issues.mjs"
-      - ".github/workflows/build-data.yml"
-      - ".github/ISSUE_TEMPLATE/**"
+    branches: [ main ]
+  issues:
+    types: [opened, edited, closed, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # data/* içine commit atmak için
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install deps
-        run: npm i octokit
+        run: npm ci
 
-      - name: Build normalized.json from issues
+      - name: Build JSON from Issues
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/build-from-issues.mjs
 
-      - name: Commit & push data
+      - name: Commit data/*
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(data): rebuild normalized.json from issues"
-          file_pattern: "data/normalized.json"
-
+          commit_message: "build: update data/* from issues"
+          file_pattern: data/**
