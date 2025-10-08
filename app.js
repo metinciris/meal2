@@ -92,46 +92,68 @@ function renderHome(){
     let done = 0;
     for (let a=1; a<=AYAHS[s]; a++) if (byKey.has(`${s}:${a}`)) done++;
     if (done > 0) withData.push({ s, done });
-    else withoutData.push({ s, done: 0 });
+    else withoutData.push({ s });
   }
 
   const fr = document.createDocumentFragment();
 
-  // — Girişi olan sûreler (büyük kartlar, grid)
-  const grid = document.createElement('div');
-  grid.className = 'surah-list'; // mevcut stil
-  for (const {s, done} of withData) {
-    const btn = document.createElement('button');
-    btn.className = 'surah-btn done';
-    btn.innerHTML = `${s} - ${NAMES[s]}<span class="sub">${done}/${AYAHS[s]} tamamlandı</span>`;
-    btn.onclick = () => { ttsStop(); openSurah(s); };
-    grid.appendChild(btn);
-  }
-  fr.appendChild(grid);
+  // Ana kapsayıcı
+  const home = document.createElement('div');
+  home.className = 'home';
 
-  // — Diğer sûreler (kollaps, daha küçük/yoğun grid)
-  if (withoutData.length) {
+  // SOL: meali olanlar (hero-grid)
+  const hero = document.createElement('div');
+  hero.className = 'hero-grid';
+  for (const {s, done} of withData) {
+    const card = document.createElement('button');
+    card.className = 'surah-card done';
+    card.innerHTML = `<div class="title">${s} - ${NAMES[s]}</div><div class="sub">${done}/${AYAHS[s]} tamamlandı</div>`;
+    card.onclick = () => { ttsStop(); openSurah(s); };
+    hero.appendChild(card);
+  }
+  // “hiç yoksa” boş bir mesaj (opsiyonel)
+  if (withData.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'surah-card';
+    empty.innerHTML = `<div class="title">Henüz meâl girilmemiş</div><div class="sub">Issues → Meal Ekle formuyla başlayın</div>`;
+    hero.appendChild(empty);
+  }
+
+  // SAĞ: diğer sûreler (kollaps + çip grid)
+  const side = document.createElement('aside');
+  side.className = 'sidebar';
+
+  if (withoutData.length){
+    const wrap = document.createElement('div');
+    wrap.className = 'others';
+
     const details = document.createElement('details');
-    details.className = 'others';
+    details.open = true; // küçük bir açılış hareketi için açık başlayabilir
     const summary = document.createElement('summary');
     summary.textContent = `Diğer sûreler (${withoutData.length})`;
     details.appendChild(summary);
 
-    const smallGrid = document.createElement('div');
-    smallGrid.className = 'surah-list compact'; // küçük kartlar için
+    const chipGrid = document.createElement('div');
+    chipGrid.className = 'chip-grid';
     for (const {s} of withoutData) {
-      const btn = document.createElement('button');
-      btn.className = 'surah-btn';
-      btn.innerHTML = `${s} - ${NAMES[s]}`;
-      btn.onclick = () => { ttsStop(); openSurah(s); };
-      smallGrid.appendChild(btn);
+      const chip = document.createElement('button');
+      chip.className = 'chip';
+      chip.textContent = `${s} - ${NAMES[s]}`;
+      chip.onclick = () => { ttsStop(); openSurah(s); };
+      chipGrid.appendChild(chip);
     }
-    details.appendChild(smallGrid);
-    fr.appendChild(details);
+    details.appendChild(chipGrid);
+    wrap.appendChild(details);
+    side.appendChild(wrap);
   }
+
+  home.appendChild(hero);
+  home.appendChild(side);
+  fr.appendChild(home);
 
   list.replaceChildren(fr);
 }
+
 
 /* ===================== SÛRE GÖRÜNÜMÜ ===================== */
 
