@@ -8,40 +8,28 @@
   <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png">
-  <meta name="theme-color" content="#111827">
+  <meta name="theme-color" content="#0b1220">
   <!-- iOS -->
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
-  <!-- Yükleniyor katmanı -->
-  <div id="loading" class="loading" aria-live="polite">
-    <div class="loading-box">
-      <div class="loading-title">Kuran'ın gölgesinde</div>
-      <div class="loading-author">Ayhan KIRMIZI</div>
-      <div class="loading-quote">Aklını kullanmayanların üzerine pislik yağar</div>
-      <div class="loading-spin">Yükleniyor…</div>
+  <header class="topbar">
+    <div class="brand">
+      <h1 class="app-title">Kuran'ın Gölgesinde</h1>
+      <div id="crumbs" class="crumbs">Ana sayfa</div>
     </div>
-  </div>
-
-<header class="topbar">
-  <div class="brand">
-    <h1>Kuran'ın Gölgesinde</h1>
-    <div id="crumbs" class="crumbs">Ana sayfa</div>
-  </div>
-
-  <!-- Tema düğmesi -->
-  <button id="themeToggle" class="theme-toggle" aria-label="Temayı değiştir">🌙</button>
-</header>
-
+    <button id="themeToggle" class="theme-toggle" title="Tema">🌙</button>
+  </header>
 
   <main class="container">
+    <!-- Ana sayfa (sûre listesi) -->
     <section id="surahList" class="surah-list"></section>
 
+    <!-- Sûre görünümü -->
     <section id="surahView" class="surah-view" hidden>
       <button id="backBtn" class="back">← Tüm sûreler</button>
       <h2 id="surahTitle"></h2>
@@ -61,14 +49,13 @@
 
   <footer class="foot">
     <small>
-      <div><strong>Güncelleme</strong> <span id="lastUpdated">—</span></div>
-      <div>Ayhan KIRMIZI</div>
-      <div><em>"Aklını kullanmayanların üzerine pislik yağar"</em></div>
+      Güncelleme: <span id="lastUpdated">—</span>
+      &nbsp;•&nbsp; Ayhan KIRMIZI &nbsp;•&nbsp;
+      <em>"Aklını kullanmayanların üzerine pislik yağar"</em>
     </small>
   </footer>
 
-
-  <script src="app.js?v=4" defer></script>
+  <script src="app.js?v=11" defer></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js');
