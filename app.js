@@ -1,12 +1,10 @@
-/**************** app.js — Manifest + Per-Sûre JSON, PWA, TTS, Tema ****************/
+/**************** app.js — Tek JSON (normalized.json), PWA, TTS ****************/
 
 /* ===== Dinamik URL yardımcıları ===== */
 function basePath(){ const p = location.pathname; return p.endsWith('/') ? p : p.replace(/[^/]+$/, ''); }
 function urlJoin(...segs){ return new URL(segs.join('/').replace(/\/+/g,'/'), location.origin).toString(); }
 
-const MANIFEST_URL   = urlJoin(basePath(), 'data/manifest.json');
-const SUREH_URL      = (s) => urlJoin(basePath(), `data/surah/${s}.json`);
-const NORMALIZED_URL = urlJoin(basePath(), 'data/normalized.json');
+const DATA_URL = urlJoin(basePath(), 'data/normalized.json');
 
 /* Sûre adları ve âyet sayıları */
 const NAMES = [
@@ -46,11 +44,9 @@ function formatDateTR(iso){
   }catch{ return '—' }
 }
 
-/* Global durum */
-let manifest = null;                   // { lastUpdated, progress: [{s,done,total}] }
-let lastUpdated = null;
-const surahCache = new Map();          // s → { sure, rows, lastUpdated }
-const byKey = new Map();               // yalnız açık sûrenin kayıtları "s:a" → rec
+/* Global durum (tek JSON) */
+let DATA = { rows: [], lastUpdated: null };
+const byKey = new Map();   // "s:a" → rec (açık sûrede dolduruluyor)
 let currentSurah = null;
 
 /* ==== TTS durum & sözlük ==== */
@@ -73,69 +69,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#ttsRate')?.addEventListener('input', e => { tts.rate = parseFloat(e.target.value || '0.8'); });
 
   try {
-    await Promise.all([ loadManifest(), initTTS(), loadTTSDict() ]);
+    await Promise.all([ loadData(), initTTS(), loadTTSDict() ]);
     renderHome();
   } catch (e) {
     console.error(e);
-    alert('Veri yüklenemedi.\n\nKontrol: data/manifest.json veya data/normalized.json mevcut mu?\nPWA önbelleğini temizleyip tekrar deneyin.');
+    alert('Veri yüklenemedi.\n\nKontrol: data/normalized.json mevcut mu?\nPWA önbelleğini temizleyip tekrar deneyin.');
   }
 
-  initTheme(); // tema tuşu
+  initTheme();
 });
 
 /* ===================== DATA ===================== */
 
-async function loadManifest(){
-  try{
-    const res = await fetch(MANIFEST_URL, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`manifest ${res.status}`);
-    manifest = await res.json();
-    lastUpdated = manifest.lastUpdated || null;
-  } catch (err) {
-    console.warn('[manifest] yok → normalized fallback:', err?.message || err);
-    await loadManifestFromNormalizedFallback();
-  }
-  $('#lastUpdated') && ($('#lastUpdated').textContent = formatDateTR(lastUpdated));
-}
-
-/* manifest bulunamazsa normalized.json'dan üretir (RAM cache) */
-async function loadManifestFromNormalizedFallback(){
-  const res = await fetch(NORMALIZED_URL, { cache:'no-store' });
-  if (!res.ok) throw new Error(`normalized ${res.status}`);
-  const j = await res.json(); // {rows, lastUpdated}
-  lastUpdated = j.lastUpdated || null;
-
-  const prog = Array.from({length:115}, (_,i)=> ({s:i,done:0,total:AYAHS[i]||0})).slice(1);
-  const map = new Map();
-  for (const r of (j.rows || [])) {
-    if (r.sure>=1 && r.sure<=114) {
-      prog[r.sure-1].done++;
-      if (!map.has(r.sure)) map.set(r.sure, []);
-      map.get(r.sure).push(r);
-    }
-  }
-  manifest = { lastUpdated, progress: prog };
-
-  // per-sûre verisini RAM’e koy (diskte dosya olmasa da çalışsın)
-  for (const [s, rows] of map.entries()) {
-    rows.sort((a,b)=> a.ayet - b.ayet);
-    surahCache.set(s, { sure:s, rows, lastUpdated });
-  }
-}
-
-async function loadSurahData(s){
-  if (surahCache.has(s)) return surahCache.get(s);
-  try{
-    const res = await fetch(SUREH_URL(s), { cache: 'no-store' });
-    if (!res.ok) throw new Error(`surah ${s} ${res.status}`);
-    const j = await res.json(); // { sure, rows, lastUpdated }
-    surahCache.set(s, j);
-    return j;
-  } catch (err) {
-    if (surahCache.has(s)) return surahCache.get(s); // fallback RAM
-    console.error('[surah] yüklenemedi:', s, err?.message || err);
-    throw err;
-  }
+async function loadData(){
+  const res = await fetch(DATA_URL, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`normalized.json ${res.status}`);
+  DATA = await res.json();
+  $('#lastUpdated') && ($('#lastUpdated').textContent = formatDateTR(DATA.lastUpdated));
 }
 
 /* ===================== HOME (sûre listesi) ===================== */
@@ -149,10 +99,16 @@ function renderHome(){
   list.hidden = false; list.style.display = '';
   $('#crumbs').textContent = 'Ana sayfa';
 
+  // her sûre için done say
+  const done = Array.from({length:115}, _=>0);
+  for (const r of DATA.rows || []) {
+    if (r.sure >=1 && r.sure <=114) done[r.sure] += 1;
+  }
+
   const withData = [];
   const withoutData = [];
-  for (const p of manifest.progress || []) {
-    (p.done > 0 ? withData : withoutData).push(p);
+  for (let s=1; s<=114; s++){
+    (done[s] > 0 ? withData : withoutData).push({ s, done: done[s], total: AYAHS[s] });
   }
 
   const home = document.createElement('div');
@@ -170,7 +126,7 @@ function renderHome(){
   } else {
     for (const { s, done, total } of withData) {
       const card = document.createElement('button');
-      card.className = 'card done';
+      card.className = 'card';
       const pct = Math.min(100, Math.round((done/total)*100));
       card.innerHTML = `
         <div class="head">
@@ -200,7 +156,7 @@ function renderHome(){
 
     const chips = document.createElement('div');
     chips.className = 'chips';
-    chips.hidden = false; // dilersen true ile kapalı başlat
+    chips.hidden = false; // istersen true ile kapalı başlat
     btn.onclick = () => { chips.hidden = !chips.hidden; };
 
     for (const { s } of withoutData) {
@@ -224,9 +180,10 @@ async function openSurah(s){
   const view = $('#surahView');
   if (!list || !view) return;
 
-  const data = await loadSurahData(s); // { sure, rows, lastUpdated }
+  // bu sûrenin kayıtlarını çek
+  const rows = (DATA.rows || []).filter(r => r.sure === s).sort((a,b)=> a.ayet - b.ayet);
   byKey.clear();
-  for (const r of data.rows) byKey.set(`${r.sure}:${r.ayet}`, r);
+  for (const r of rows) byKey.set(`${r.sure}:${r.ayet}`, r);
 
   list.hidden = true;  list.style.display = 'none';
   view.hidden = false; view.style.display = '';
@@ -411,11 +368,12 @@ function initTheme(){
     if (mode === 'light') {
       root.setAttribute('data-theme','light');
       metaTheme && metaTheme.setAttribute('content', '#f6f7fb');
+      btn.textContent = '☀️';
     } else {
       root.removeAttribute('data-theme'); // dark
       metaTheme && metaTheme.setAttribute('content', '#0b1220');
+      btn.textContent = '🌙';
     }
     localStorage.setItem(key, mode);
-    if (btn) btn.textContent = (mode === 'light') ? '☀️' : '🌙';
   }
 }
