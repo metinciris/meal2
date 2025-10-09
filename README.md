@@ -1,4 +1,4 @@
- **meal2** için “sadece GitHub” ile çalışan, kolay giriş + PWA web arayüzü mimarisini **uçtan uca** veriyorum. Aşağıdaki adımları *tane tane* izleyip dosyaları aynen kopyalarsan **[https://metinciris.github.io/meal2/](https://metinciris.github.io/meal2/)** tam çalışır.
+[ **meal2** için “sadece GitHub” ile çalışan, kolay giriş + PWA web arayüzü mimarisini **uçtan uca** veriyorum. Aşağıdaki adımları *tane tane* izleyip dosyaları aynen kopyalarsan **[https://metinciris.github.io/meal2/](https://metinciris.github.io/meal2/)** tam çalışır.
 
 > **Not:** Bu sürüm **Google Sheets/Form KULLANMAZ**. Girdiler **GitHub Issues formu** üzerinden alınır, **GitHub Actions** ile `data/normalized.json` üretilir. Web, bu JSON’dan okur (PWA, TTS, iç linkler vb. önceki özelliklerin tamamı mevcut).
 
@@ -322,3 +322,4 @@ jobs:
 Hepsi bu. Şimdi `meal2` repo’na bu dosyaları ekleyip **Issues → Meal Ekle/Güncelle** ile ilk kaydı gir; **Actions** çalışınca `data/normalized.json` oluşacak ve **[https://metinciris.github.io/meal2/](https://metinciris.github.io/meal2/)** üzerinde PWA arayüzüyle görünecek.
 
 İstersen “Son eklenenler”, açık/koyu tema veya “fixlenmiş telaffuzlar” gibi küçük eklemeleri de hazırlarım.
+](https://metinciris.github.io/meal2/](https://metinciris.github.io/meal2/)
