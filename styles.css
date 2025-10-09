@@ -130,3 +130,6 @@ body{
 @media (max-width:480px){
   .hero{ grid-template-columns: 1fr; }
 }
+/* Kart başlığı ve alt satır renkleri — görünürlüğü garanti et */
+.card .head-text .title { color: var(--fg) !important; }
+.card .head-text .sub   { color: var(--muted) !important; }
