@@ -115,7 +115,7 @@ function renderHome(){
   // her sûre için done say
   const done = Array.from({length:115}, _=>0);
   for (const r of DATA.rows || []) {
-    if (r.sure >=1 && r.sure <=114) done[r.sure] += 1;
+    if (r.sure >=1 && r.sure <=114) done[r.sure] = Math.max(done[r.sure], r.ayet||0);
   }
 
   const withData = [];
@@ -146,7 +146,7 @@ function renderHome(){
           <div class="badge">${s}</div>
           <div class="head-text">
             <div class="title">${NAMES[s]}</div>
-            <div class="sub">${done}/${total} tamamlandı</div>
+            <div class="sub">Son ayet: ${done}/${total}</div>
           </div>
         </div>
         <div class="progress"><span style="width:${pct}%"></span></div>
