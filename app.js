@@ -1,3 +1,16 @@
+/* ===== Strip any stray "Yükleniyor…" texts if injected by host or template ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  const re = /Yükleniyor…|Yükleniyor\.{1,3}|YUKLENIYOR|Yukleniyor\.{0,3}/i;
+  const scrub = () => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const toClean = [];
+    let node; while ((node = walker.nextNode())) { if (re.test((node.textContent||'').trim())) toClean.push(node); }
+    toClean.forEach(node => { node.textContent = node.textContent.replace(re, ''); });
+  };
+  scrub();
+  new MutationObserver(() => scrub()).observe(document.body, {childList:true, subtree:true, characterData:true});
+});
+
 /**************** app.js — Tek JSON (normalized.json), PWA, TTS ****************/
 
 /* ===== Dinamik URL yardımcıları ===== */
@@ -206,12 +219,34 @@ function renderSurah(s){
     fr.appendChild(b);
   }
 
+  // Birleşik mealler için atlanan ayetleri işaretle
+  const skipped = new Set();
+
   for (let a = 1; a <= AYAHS[s]; a++) {
+    if (skipped.has(a)) continue;
+
     const rec = byKey.get(`${s}:${a}`);
     if (!rec) continue;
 
     const text = rec.meal || '';
     const note = rec.aciklama || '';
+
+    // Eğer bu ayetin meali dolu, takip eden(ler) tamamen boşsa bir aralık oluştur (169-170 gibi)
+    let end = a;
+    if (text.trim()) {
+      while (end + 1 <= AYAHS[s]) {
+        const next = byKey.get(`${s}:${end + 1}`);
+        if (!next) break;
+        const nextMeal = (next.meal || '').trim();
+        const nextNote = (next.aciklama || '').trim();
+        if (nextMeal === '' && nextNote === '') {
+          end++;
+          skipped.add(end);
+        } else {
+          break;
+        }
+      }
+    }
 
     const card = document.createElement('div');
     card.className = 'ayah-card';
@@ -219,7 +254,7 @@ function renderSurah(s){
 
     const num = document.createElement('span');
     num.className = 'anum';
-    num.textContent = `${s}:${a}`;
+    num.textContent = (end > a) ? `${s}:${a}-${end}` : `${s}:${a}`;
     card.appendChild(num);
 
     card.insertAdjacentHTML('beforeend',
@@ -240,6 +275,7 @@ function renderSurah(s){
   wrap.replaceChildren(fr);
   ttsStop(false);
 }
+
 
 /* ===================== TTS ===================== */
 
