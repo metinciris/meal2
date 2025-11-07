@@ -1,4 +1,4 @@
-/* ===== Strip any stray "Yükleniyor…" texts if injected by host or template ===== */
+/* ===== Yükleniyor… temizliği (varsa) ===== */
 document.addEventListener('DOMContentLoaded', () => {
   const re = /Yükleniyor…|Yükleniyor\.{1,3}|YUKLENIYOR|Yukleniyor\.{0,3}/i;
   const scrub = () => {
@@ -11,58 +11,23 @@ document.addEventListener('DOMContentLoaded', () => {
   new MutationObserver(() => scrub()).observe(document.body, {childList:true, subtree:true, characterData:true});
 });
 
-/**************** app.js — Tek JSON (normalized.json), PWA, TTS ****************/
+/**************** app.js — tek data + YouTube embed + TTS stub ****************/
 
 /* ===== Dinamik URL yardımcıları ===== */
-function basePath(){ const p = location.pathname; return p.endsWith('/') ? p : p.replace(/[^/]+$/, ''); }
+function basePath(){
+  // GitHub Pages "repo" alt yolunu hesaba kat
+  // örn: https://metinciris.github.io/meal2/ → "/meal2/"
+  const p = location.pathname;
+  const parts = p.split('/').filter(Boolean);
+  if (parts.length >= 1) return '/' + parts[0] + '/';
+  return '/';
+}
 function urlJoin(...segs){ return new URL(segs.join('/').replace(/\/+/g,'/'), location.origin).toString(); }
 
-const DATA_URL = urlJoin(basePath(), 'data/normalized.json');
+const DATA_URL   = urlJoin(basePath(), 'data/normalized.json');
+const EMBEDS_URL = urlJoin(basePath(), 'data/embeds.json');  // ← YouTube verisi
 
-// YouTube embed verisi
-const EMBEDS_URL = urlJoin(basePath(), 'data/embeds.json');
-let EMBEDS = null; // { bySurah: { "1":[{after,url,start,title}] }, lastUpdated }
-
-// "1:23:45", "12:34", "t=1m15s" veya "230" → saniye
-function hmsToSec(hms){
-  if (typeof hms === 'number') return hms|0;
-  if (!hms) return 0;
-  if (/^\d+$/.test(hms)) return parseInt(hms,10);
-  const m = String(hms).match(/(?:(\d+):)?(\d+):(\d+)/); // hh:mm:ss | mm:ss
-  if (m){ const hh=+(m[1]||0), mm=+m[2], ss=+m[3]; return hh*3600+mm*60+ss; }
-  const t = String(hms).replace(/^t=/i,'');
-  const mh = t.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/i);
-  if (mh) return (+(mh[1]||0)*3600)+(+(mh[2]||0)*60)+(+(mh[3]||0));
-  return 0;
-}
-
-// YouTube URL → { id, startFromUrl }
-function parseYouTube(url){
-  try{
-    const u = new URL(url);
-    let id = '';
-    if (u.hostname.includes('youtu.be'))        id = u.pathname.slice(1);
-    else if (u.searchParams.get('v'))           id = u.searchParams.get('v');
-    else { const m = u.pathname.match(/\/embed\/([^/?#]+)/); if (m) id = m[1]; }
-    let start = 0;
-    if (u.searchParams.get('start')) start = parseInt(u.searchParams.get('start'),10)||0;
-    if (u.searchParams.get('t'))     start = hmsToSec(u.searchParams.get('t')) || start;
-    return { id, startFromUrl:start };
-  }catch(e){ return { id:'', startFromUrl:0 }; }
-}
-
-// iframe oluşturucu
-function buildYT(srcId, startSec){
-  const s = Math.max(0, startSec|0);
-  const src = `https://www.youtube-nocookie.com/embed/${srcId}?start=${s}&autoplay=0&rel=0&modestbranding=1`;
-  const wrap = document.createElement('div');
-  wrap.className = 'ytwrap';
-  wrap.innerHTML = `<iframe loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen src="${src}"></iframe>`;
-  return wrap;
-}
-
-
-/* Sûre adları ve âyet sayıları */
+/* Sûre adları ve âyet sayıları (sabit) */
 const NAMES = [
   '', 'Fâtiha','Bakara','Âl-i İmrân','Nisâ','Mâide','En’âm','A’râf','Enfâl','Tevbe','Yûnus','Hûd',
   'Yûsuf','Ra’d','İbrâhîm','Hicr','Nahl','İsrâ','Kehf','Meryem','Tâhâ','Enbiyâ','Hac','Mü’minûn',
@@ -81,40 +46,61 @@ const AYAHS = [0,7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,1
  60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,
  36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6];
 
-/* Besmele (Fâtiha hariç) */
+/* Besmele (Fâtiha hariç) — metnin sizdeki versiyonu kullanılabilir */
 const BESMELE_TEXT =
-  'Hepimizi ve her birimizi daima bağrına basan ve ilişkisini asla kesmeyen, her zaman iyiliğimize meyilli doğanın, can veren o gücün! Adına';
+  'Hepimizi ve her birimizi daima bağrına basan ve ilişkisini asla kesmeyen, '+
+  'her zaman iyiliğimize meyilli doğanın, can veren o gücün! Adına';
 
 /* Kısa yardımcılar */
 const $ = (s) => document.querySelector(s);
 function escapeHTML(s){
-  return (s||'').toString().replace(/[&<>"']/g, m => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[m]));
+  return String(s||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-function formatDateTR(iso){
+
+/* ====== YouTube yardımcıları ====== */
+// "1:23:45", "12:34", "t=1m15s" veya "230" → saniye
+function hmsToSec(hms){
+  if (typeof hms === 'number') return hms|0;
+  if (!hms) return 0;
+  if (/^\d+$/.test(hms)) return parseInt(hms,10);
+  const m = String(hms).match(/(?:(\d+):)?(\d+):(\d+)/); // hh:mm:ss | mm:ss
+  if (m){ const hh=+(m[1]||0), mm=+m[2], ss=+m[3]; return hh*3600+mm*60+ss; }
+  const t = String(hms).replace(/^t=/i,'');
+  const mh = t.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/i);
+  if (mh) return (+(mh[1]||0)*3600)+(+(mh[2]||0)*60)+(+(mh[3]||0));
+  return 0;
+}
+// YouTube URL → { id, startFromUrl }
+function parseYouTube(url){
   try{
-    if (!iso) return '—';
-    const d = new Date(iso);
-    return d.toLocaleDateString('tr-TR', { day:'numeric', month:'long', year:'numeric', timeZone:'Europe/Istanbul' });
-  }catch{ return '—' }
+    const u = new URL(url);
+    let id = '';
+    if (u.hostname.includes('youtu.be'))        id = u.pathname.slice(1);
+    else if (u.searchParams.get('v'))           id = u.searchParams.get('v');
+    else { const m = u.pathname.match(/\/embed\/([^/?#]+)/); if (m) id = m[1]; }
+    let start = 0;
+    if (u.searchParams.get('start')) start = parseInt(u.searchParams.get('start'),10)||0;
+    if (u.searchParams.get('t'))     start = hmsToSec(u.searchParams.get('t')) || start;
+    return { id, startFromUrl:start };
+  }catch(e){ return { id:'', startFromUrl:0 }; }
+}
+// iframe oluşturucu
+function buildYT(srcId, startSec){
+  const s = Math.max(0, startSec|0);
+  const src = `https://www.youtube-nocookie.com/embed/${srcId}?start=${s}&autoplay=0&rel=0&modestbranding=1`;
+  const wrap = document.createElement('div');
+  wrap.className = 'ytwrap';
+  wrap.innerHTML = `<iframe loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen src="${src}"></iframe>`;
+  return wrap;
 }
 
-/* Global durum (tek JSON) */
-let DATA = { rows: [], lastUpdated: null };
-const byKey = new Map();   // "s:a" → rec (açık sûrede dolduruluyor)
-let currentSurah = null;
-
-/* ==== TTS durum & sözlük ==== */
-const tts = {
-  synth: typeof window !== 'undefined' ? window.speechSynthesis : null,
-  voice: null,
-  rate: 0.8,
-  queue: [],
-  idx: -1,
-  playing: false,
-  dict: { replacements: [] }
-};
+/* ====== Global durum ====== */
+let DATA   = { rows: [], lastUpdated: null };
+let EMBEDS = null; // { bySurah: { "1":[{after,url,start,title}] }, lastUpdated }
+let currentSurah = 1;
+const byKey = new Map();
 
 /* ===================== BOOT ===================== */
 
@@ -125,11 +111,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#ttsRate')?.addEventListener('input', e => { tts.rate = parseFloat(e.target.value || '0.8'); });
 
   try {
+    // normalized + embeds beraber yüklenir
     await Promise.all([ loadData(), loadEmbeds(), initTTS(), loadTTSDict() ]);
     renderHome();
   } catch (e) {
     console.error(e);
-    alert('Veri yüklenemedi.\n\nKontrol: data/normalized.json mevcut mu?\nPWA önbelleğini temizleyip tekrar deneyin.');
+    alert('Veri yüklenemedi.\n\nKontrol: data/normalized.json ve data/embeds.json mevcut mu?\nPWA önbelleğini temizleyip tekrar deneyin.');
   }
 
   initTheme();
@@ -141,102 +128,39 @@ async function loadData(){
   const res = await fetch(DATA_URL, { cache: 'no-store' });
   if (!res.ok) throw new Error(`normalized.json ${res.status}`);
   DATA = await res.json();
-  $('#lastUpdated') && ($('#lastUpdated').textContent = formatDateTR(DATA.lastUpdated));
 }
 async function loadEmbeds(){
   try{
     const res = await fetch(EMBEDS_URL, { cache: 'no-store' });
     if (res.ok) EMBEDS = await res.json();
-  }catch(e){}
+  }catch(e){ EMBEDS = null; }
 }
 
-/* ===================== HOME (sûre listesi) ===================== */
+/* ===================== HOME ===================== */
 
 function renderHome(){
   const list = $('#surahList');
   const view = $('#surahView');
   if (!list || !view) return;
 
-  view.hidden = true; view.style.display = 'none';
   list.hidden = false; list.style.display = '';
-  $('#crumbs').textContent = 'Ana sayfa';
+  view.hidden = true;  view.style.display = 'none';
 
-  // her sûre için done say
-  const done = Array.from({length:115}, _=>0);
-  for (const r of DATA.rows || []) {
-    if (r.sure >=1 && r.sure <=114) done[r.sure] = Math.max(done[r.sure], r.ayet||0);
-  }
-
-  const withData = [];
-  const withoutData = [];
+  const ul = $('#surahItems');
+  if (!ul) return;
+  const fr = document.createDocumentFragment();
   for (let s=1; s<=114; s++){
-    (done[s] > 0 ? withData : withoutData).push({ s, done: done[s], total: AYAHS[s] });
+    const li = document.createElement('li');
+    li.innerHTML = `<button class="surah-item" data-s="${s}"><b>${s} - ${escapeHTML(NAMES[s])}</b><span>${AYAHS[s]} âyet</span></button>`;
+    li.querySelector('button').addEventListener('click', () => renderSurahView(s));
+    fr.appendChild(li);
   }
-
-  const home = document.createElement('div');
-  home.className = 'home';
-
-  // büyük kartlar
-  const hero = document.createElement('div');
-  hero.className = 'hero';
-
-  if (withData.length === 0){
-    const empty = document.createElement('div');
-    empty.className = 'card';
-    empty.innerHTML = `<div class="title">Henüz meâl girilmemiş</div><div class="sub">Issues → Meal Ekle formuyla başlayın</div>`;
-    hero.appendChild(empty);
-  } else {
-    for (const { s, done, total } of withData) {
-      const card = document.createElement('button');
-      card.className = 'card';
-      const pct = Math.min(100, Math.round((done/total)*100));
-      card.innerHTML = `
-        <div class="head">
-          <div class="badge">${s}</div>
-          <div class="head-text">
-            <div class="title">${NAMES[s]}</div>
-            <div class="sub">Son ayet: ${done}/${total}</div>
-          </div>
-        </div>
-        <div class="progress"><span style="width:${pct}%"></span></div>
-      `;
-      card.onclick = () => { ttsStop(); openSurah(s); };
-      hero.appendChild(card);
-    }
-  }
-  home.appendChild(hero);
-
-  // diğer sûreler: çipler
-  if (withoutData.length){
-    const title = document.createElement('div');
-    title.className = 'section-title';
-    const btn = document.createElement('button');
-    btn.textContent = `Diğer sûreler (${withoutData.length})`;
-    const line = document.createElement('div'); line.className = 'line';
-    title.appendChild(btn); title.appendChild(line);
-    home.appendChild(title);
-
-    const chips = document.createElement('div');
-    chips.className = 'chips';
-    chips.hidden = false; // istersen true ile kapalı başlat
-    btn.onclick = () => { chips.hidden = !chips.hidden; };
-
-    for (const { s } of withoutData) {
-      const chip = document.createElement('button');
-      chip.className = 'chip';
-      chip.textContent = `${s} - ${NAMES[s]}`;
-      chip.onclick = () => { ttsStop(); openSurah(s); };
-      chips.appendChild(chip);
-    }
-    home.appendChild(chips);
-  }
-
-  list.replaceChildren(home);
+  ul.replaceChildren(fr);
 }
 
-/* ===================== SÛRE GÖRÜNÜMÜ ===================== */
+function goHome(){ renderHome(); return false; }
 
-async function openSurah(s){
+async function renderSurahView(s){
   currentSurah = s;
   const list = $('#surahList');
   const view = $('#surahView');
@@ -256,140 +180,117 @@ async function openSurah(s){
   renderSurah(s);
 }
 
+/* ===================== SÛRE RENDER ===================== */
+
 function renderSurah(s){
   const wrap = $('#ayahList');
   if (!wrap) return;
   const fr = document.createDocumentFragment();
 
+  // Sûre başında besmele (Fâtiha hariç)
   if (s !== 1) {
     const b = document.createElement('div');
     b.className = 'ayah-card basmala';
     b.innerHTML = `<p dir="auto" class="bsm-text">${escapeHTML(BESMELE_TEXT)}</p>`;
     fr.appendChild(b);
-  }
 
-  // Birleşik mealler için atlanan ayetleri işaretle
-  const skipped = new Set();
-
-  for (let a = 1; a <= AYAHS[s]; a++) {
-    if (skipped.has(a)) continue;
-
-    const rec = byKey.get(`${s}:${a}`);
-    if (!rec) continue;
-
-    const text = rec.meal || '';
-    const note = rec.aciklama || '';
-
-    // Eğer bu ayetin meali dolu, takip eden(ler) tamamen boşsa bir aralık oluştur (169-170 gibi)
-    let end = a;
-    if (text.trim()) {
-      while (end + 1 <= AYAHS[s]) {
-        const next = byKey.get(`${s}:${end + 1}`);
-        if (!next) break;
-        const nextMeal = (next.meal || '').trim();
-        const nextNote = (next.aciklama || '').trim();
-        if (nextMeal === '' && nextNote === '') {
-          end++;
-          skipped.add(end);
-        } else {
-          break;
+    // after:0 videoları en başa koymak istersen:
+    const headList = EMBEDS?.bySurah?.[String(s)] || [];
+    for (const e of headList){
+      if ((e.after|0) === 0){
+        const { id } = parseYouTube(e.url || '');
+        const start = (e.start|0) || 0;
+        if (id){
+          const node = buildYT(id, start);
+          if (e.title){
+            const cap = document.createElement('div');
+            cap.className = 'ytcaption';
+            cap.textContent = e.title;
+            node.appendChild(cap);
+          }
+          fr.appendChild(node);
         }
       }
     }
+  }
+
+  // âyet satırları
+  for (let a = 1; a <= AYAHS[s]; a++) {
+    const key = `${s}:${a}`;
+    const rec = byKey.get(key);
 
     const card = document.createElement('div');
     card.className = 'ayah-card';
-    card.id = `a-${s}-${a}`;
+    card.setAttribute('data-ayah', a);
 
-    const num = document.createElement('span');
-    num.className = 'anum';
-    num.textContent = (end > a) ? `${s}:${a}-${end}` : `${s}:${a}`;
+    const num = document.createElement('div');
+    num.className = 'ayah-num';
+    num.textContent = a;
     card.appendChild(num);
 
-    card.insertAdjacentHTML('beforeend',
-      `<p dir="auto">${escapeHTML(text)}</p>` +
-      (note ? `<div class="note" dir="auto">${linkify(escapeHTML(note))}</div>` : '')
-    );
+    const body = document.createElement('div');
+    body.className = 'ayah-body';
+    const mealText = rec?.meal || '';
+    const aciklama = rec?.aciklama || '';
+    body.innerHTML = `
+      <p dir="auto" class="meal-text">${escapeHTML(mealText || '(henüz girilmedi)')}</p>
+      ${aciklama ? `<p class="meal-note">${escapeHTML(aciklama)}</p>` : ''}`;
+    card.appendChild(body);
 
-    card.addEventListener('click', (ev) => {
-      if (ev.target.tagName === 'A') return;
-      ttsPlayFromElement(card);
-      card.classList.add('shownum');
-      setTimeout(()=>card.classList.remove('shownum'), 1600);
-    });
-
+    // kartı ekle
     fr.appendChild(card);
-    // Bu âyetten SONRA gelen YouTube embed'leri ekle
-const list = EMBEDS?.bySurah?.[String(s)] || [];
-for (const e of list){
-  if ((e.after|0) === a){ // 'a' mevcut âyet numarası
-    const { id } = parseYouTube(e.url || '');
-    // Issue'da start boşsa URL'deki t=/start= kullanılır; doluysa alan öncelikli
-    const start = (e.start|0) || 0;
-    if (id){
-      const node = buildYT(id, start);
-      if (e.title){
-        const cap = document.createElement('div');
-        cap.className = 'ytcaption';
-        cap.textContent = e.title;
-        node.appendChild(cap);
-      }
-      fr.appendChild(node); // kartın ARDINDAN ekle
-    }
-  }
-}
 
+    // ====> Bu âyetten SONRA gelen YouTube embed'leri ekle
+    const list = EMBEDS?.bySurah?.[String(s)] || [];
+    for (const e of list){
+      if ((e.after|0) === a){
+        const { id } = parseYouTube(e.url || '');
+        const start = (e.start|0) || 0; // Issues "Başlangıç" öncelikli; yoksa URL'deki t=/start=
+        if (id){
+          const node = buildYT(id, start);
+          if (e.title){
+            const cap = document.createElement('div');
+            cap.className = 'ytcaption';
+            cap.textContent = e.title;
+            node.appendChild(cap);
+          }
+          fr.appendChild(node);
+        }
+      }
+    }
   }
 
   wrap.replaceChildren(fr);
   ttsStop(false);
 }
 
-
-/* ===================== TTS ===================== */
+/* ===================== TTS (basit stub; varsa butonlar bozulmasın) ===================== */
+const tts = { synth: null, voice: null, rate: 0.9, queue: [], idx: -1, playing: false, dict: {replacements: []} };
 
 async function initTTS(){
-  if (!tts.synth) return;
-  const pickVoice = () => {
-    const voices = tts.synth.getVoices();
-    tts.voice = voices.find(v => /tr[-_]?TR/i.test(v.lang)) || voices[0] || null;
-  };
-  pickVoice();
-  if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
-    speechSynthesis.onvoiceschanged = pickVoice;
-  }
+  try{ tts.synth = window.speechSynthesis; }catch(_){}
 }
-async function loadTTSDict(){
-  try{
-    const res = await fetch(urlJoin(basePath(), 'data/tts-dict.json'), {cache:'no-store'});
-    if (res.ok) {
-      const j = await res.json();
-      if (j && Array.isArray(j.replacements)) tts.dict.replacements = j.replacements;
-    }
-  } catch(_) {}
+async function loadTTSDict(){ /* opsiyonel sözlük dosyası kullanıyorsan burada yükle */ }
+
+function updateTTSButtons(){
+  const play = $('#ttsPlay'), stop = $('#ttsStop');
+  if (play) play.disabled = !!tts.playing;
+  if (stop) stop.disabled = !tts.playing;
 }
 function buildTTSQueueForSurah(){
-  const cards = [...document.querySelectorAll('#ayahList .ayah-card')]
-    .filter(el => !el.classList.contains('basmala'));
-  const queue = [];
-  for (const el of cards){
-    const p = el.querySelector('p');
-    if (!p) continue;
-    const text = normalizeForTTS(p.innerText || p.textContent || '');
-    if (!text.trim()) continue;
-    queue.push({ id: el.id, text, el });
-  }
-  return queue;
+  const cards = Array.from(document.querySelectorAll('#ayahList .ayah-card'));
+  return cards.map(el => (el.querySelector('.meal-text')?.textContent || '').trim()).filter(Boolean);
 }
-function normalizeForTTS(text){
-  let out = (text || '').toString();
-  for (const pair of (tts.dict.replacements || [])) {
-    const from = pair[0], to = pair[1];
-    if (!from) continue;
-    const re = new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-    out = out.replace(re, to);
-  }
-  return out;
+function nextUtterance(){
+  if (!tts.synth) return ttsStop();
+  tts.idx++;
+  if (tts.idx >= tts.queue.length) return ttsStop();
+  const text = tts.queue[tts.idx];
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = tts.rate;
+  u.onend = () => nextUtterance();
+  try{ tts.synth.cancel(); }catch(_){}
+  tts.synth.speak(u);
 }
 function onTtsPlay(){
   if (!tts.synth) { alert('Tarayıcı TTS desteği bulunamadı.'); return; }
@@ -401,84 +302,11 @@ function onTtsPlay(){
 function onTtsStop(){ ttsStop(true); }
 function ttsStop(reset){
   if (tts.synth) { try { tts.synth.cancel(); } catch(_) {} }
-  unmarkReading(); tts.playing=false; tts.idx=-1; tts.queue=[];
+  tts.playing=false; tts.idx=-1; tts.queue=[];
   if (reset !== false) updateTTSButtons();
 }
-function ttsPlayFromElement(el){
-  if (!tts.synth) { alert('Tarayıcı TTS desteği bulunamadı.'); return; }
-  const queue = buildTTSQueueForSurah();
-  const idx = queue.findIndex(it => it.el === el);
-  if (idx === -1) return;
-  if (tts.synth.speaking || tts.synth.paused) { try { tts.synth.cancel(); } catch(_) {} }
-  tts.queue = queue; tts.idx = idx - 1; tts.playing = true; updateTTSButtons(); nextUtterance();
-}
-function nextUtterance(){
-  if (!tts.playing) return;
-  tts.idx++; if (tts.idx >= tts.queue.length) { ttsStop(true); return; }
-  const item = tts.queue[tts.idx];
-  const u = new SpeechSynthesisUtterance(item.text);
-  u.lang = (tts.voice && tts.voice.lang) || 'tr-TR'; u.voice = tts.voice || null;
-  u.rate = tts.rate || 0.8; u.pitch = 1.0;
-  unmarkReading(); item.el.classList.add('reading');
-  item.el.scrollIntoView({behavior:'smooth',block:'center'});
-  u.onend = () => nextUtterance(); u.onerror = () => nextUtterance();
-  tts.synth.speak(u); updateTTSButtons();
-}
-function unmarkReading(){ document.querySelectorAll('.ayah-card.reading').forEach(el => el.classList.remove('reading')); }
-function updateTTSButtons(){ const play=$('#ttsPlay'), stop=$('#ttsStop'); if (play) play.disabled=!!tts.playing; if (stop) stop.disabled=!tts.playing; }
 
-/* ===================== NAV & UTIL ===================== */
-
-function goHome(){ currentSurah = null; ttsStop(true); renderHome(); return false; }
-function linkify(txt){
-  return (txt||'').replace(/\[\[\s*(\d{1,3})\s*:\s*(\d{1,3})(?:\s*-\s*(\d{1,3}))?\s*\]\]/g,
-    (m, s, a1, a2)=>{
-      s = +s; a1 = +a1;
-      const js = `
-        ttsStop(true);
-        openSurah(${s});
-        setTimeout(()=>{
-          const el = document.getElementById('a-${s}-${a1}');
-          if (el){
-            el.classList.add('shownum');
-            el.scrollIntoView({behavior:'smooth',block:'start'});
-            setTimeout(()=>el.classList.remove('shownum'), 1800);
-          }
-        }, 120);
-        return false;`;
-      return `<a href="#" onclick="${js}">${s}:${a2 ? `${a1}-${a2}` : a1}</a>`;
-    });
-}
-
-/* ===================== Tema toggle ===================== */
+/* ===================== Tema (varsa) ===================== */
 function initTheme(){
-  const key = 'theme';
-  const root = document.documentElement;
-  const btn = document.getElementById('themeToggle');
-  const metaTheme = document.querySelector('meta[name="theme-color"]');
-
-  let saved = localStorage.getItem(key);
-  if (!saved) {
-    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-    saved = prefersLight ? 'light' : 'dark';
-  }
-  apply(saved);
-
-  btn?.addEventListener('click', () => {
-    const next = (root.getAttribute('data-theme') === 'light') ? 'dark' : 'light';
-    apply(next);
-  });
-
-  function apply(mode){
-    if (mode === 'light') {
-      root.setAttribute('data-theme','light');
-      metaTheme && metaTheme.setAttribute('content', '#f6f7fb');
-      btn.textContent = '☀️';
-    } else {
-      root.removeAttribute('data-theme'); // dark
-      metaTheme && metaTheme.setAttribute('content', '#0b1220');
-      btn.textContent = '🌙';
-    }
-    localStorage.setItem(key, mode);
-  }
+  // basit: system pref veya localStorage anahtarı olabilir; burada boş bırakıyoruz
 }
