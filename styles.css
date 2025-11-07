@@ -1,142 +1,63 @@
 :root{
-  --bg:#0b1220;
-  --fg:#e6ecf5;
-  --muted:#9aa7b6;
-  --card:#121a2b;
-  --card2:#0f1627;
-  --accent:#3b82f6;
-  --accent-weak:#2f5bbd;
-  --chip:#1b2640;
-  --line:#1c2540;
-  --ok:#10b981;
-  --reading:#fde68a;
+  --bg:#0b0d10; --fg:#e6e6e6; --muted:#a7abb3;
+  --card:#12151b; --card2:#171b22; --line:#2a2f39; --accent:#58a6ff;
 }
-
 :root[data-theme="light"]{
-  --bg:#f6f7fb;
-  --fg:#0d1320;
-  --muted:#5e6a77;
-  --card:#ffffff;
-  --card2:#ffffff;
-  --accent:#2563eb;
-  --accent-weak:#1e4fba;
-  --chip:#e8ecf9;
-  --line:#e5e7ef;
-  --ok:#059669;
-  --reading:#fff1b9;
+  --bg:#f6f7f9; --fg:#111; --muted:#555;
+  --card:#fff; --card2:#fafbfc; --line:#e6e8ee; --accent:#0b57d0;
 }
-
-*{ box-sizing:border-box }
-html,body{ height:100% }
+*{box-sizing:border-box}
+html,body{height:100%}
 body{
-  margin:0; background:var(--bg); color:var(--fg);
-  font:500 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:var(--bg); color:var(--fg);
 }
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+.muted{color:var(--muted); font-size:13px}
+.grow{flex:1 1 auto}
 
 .topbar{
   position:sticky; top:0; z-index:10;
-  display:flex; align-items:center; justify-content:space-between;
-  padding:12px 16px; background:rgba(11,18,32,.7); backdrop-filter: blur(6px);
-  border-bottom:1px solid var(--line);
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; background:rgba(11,13,16,.85);
+  border-bottom:1px solid var(--line); backdrop-filter:blur(6px);
 }
-.app-title{ font-size:18px; margin:0 0 2px 0 }
-.crumbs{ font-size:13px; color:var(--muted) }
-.theme-toggle{
-  background:transparent; color:var(--fg); border:1px solid var(--line);
-  border-radius:10px; padding:6px 10px; cursor:pointer;
-}
-
-.container{ max-width:1100px; margin:0 auto; padding:16px }
-
-.section-title{
-  display:flex; align-items:center; gap:12px; margin:20px 0 8px;
-}
-.section-title button{
-  background:transparent; color:var(--fg); border:1px solid var(--line);
-  border-radius:10px; padding:6px 10px; cursor:pointer;
-}
-.section-title .line{ flex:1; height:1px; background:var(--line) }
-
-.hero{
-  display:grid; gap:14px;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-}
-.card{
-  text-align:left; border:1px solid var(--line); background:var(--card);
-  border-radius:14px; padding:14px; cursor:pointer;
-  transition: transform .15s ease, border-color .15s ease, background .15s ease;
-}
-.card:hover{ transform: translateY(-2px); border-color:var(--accent) }
-.card .head{ display:flex; gap:12px; align-items:center; margin-bottom:10px }
-.card .badge{
-  width:42px; height:42px; border-radius:10px; display:grid; place-items:center;
-  background:var(--chip); color:var(--fg); font-weight:700;
-  border:1px solid var(--line);
-}
-.card .head-text .title{ font-weight:700; font-size:17px; margin:0 0 2px }
-.card .head-text .sub{ font-size:13px; color:var(--muted) }
-.card .progress{
-  height:6px; border-radius:999px; background:var(--line); overflow:hidden;
-}
-.card .progress span{
-  display:block; height:100%; background:linear-gradient(90deg, var(--accent), var(--ok));
+:root[data-theme="light"] .topbar{ background:rgba(255,255,255,.9) }
+.brand{font-size:18px; margin:0}
+.btn{
+  background:var(--card); color:inherit; border:1px solid var(--line);
+  padding:6px 10px; border-radius:10px; cursor:pointer;
 }
 
-.chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px }
-.chip{
-  background:var(--chip); color:var(--fg); border:1px solid var(--line);
-  padding:6px 10px; border-radius:999px; cursor:pointer; font-size:13px;
+.container{ max-width:980px; margin:20px auto; padding:0 16px }
+.grid{ list-style:none; margin:0; padding:0;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px }
+.surah-item{
+  width:100%; text-align:left; background:var(--card); border:1px solid var(--line);
+  border-radius:12px; padding:12px; color:inherit; cursor:pointer;
 }
-.chip:hover{ border-color:var(--accent) }
+.surah-item b{display:block; font-size:15px; margin-bottom:6px}
+.surah-item span{font-size:12px; color:var(--muted)}
 
-.surah-view .back{
-  margin: 2px 0 14px; border:1px solid var(--line); background:transparent;
-  color:var(--fg); border-radius:10px; padding:6px 10px; cursor:pointer;
-}
-.surah-view h2{ margin:0 0 10px; font-size:22px }
+.crumbs{ font-size:13px; color:var(--muted); margin-bottom:10px }
+.title{ font-size:20px; margin:8px 0 12px }
+.toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:10px }
+.tts .btn{ padding:4px 8px }
 
-.tts-controls{ display:flex; align-items:center; gap:12px; margin:10px 0 14px }
-.tts-controls .btn{
-  border:1px solid var(--line); background:transparent; color:var(--fg);
-  border-radius:10px; padding:6px 10px; cursor:pointer;
-}
-.tts-controls .opt{ font-size:13px; color:var(--muted) }
-.tts-controls input[type=range]{ vertical-align:middle }
-
-.ayah-list{ display:flex; flex-direction:column; gap:12px }
 .ayah-card{
-  position:relative;
-  border:1px solid var(--line); background:var(--card2);
-  border-radius:14px; padding:14px;
+  background:var(--card); border:1px solid var(--line); border-radius:14px;
+  padding:12px 14px; margin:10px 0;
 }
-.ayah-card .anum{
-  position:absolute; top:10px; right:12px; font-size:12px; color:var(--muted);
-  opacity:0; transition: opacity .2s ease;
+.ayah-num{ font-weight:600; opacity:.8; margin-bottom:6px }
+.meal-note{ color:var(--muted); font-size:13px; margin-top:8px }
+
+.ytwrap{ background:var(--card2); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin:12px 0 }
+.ytwrap iframe{ width:100%; aspect-ratio:16/9; border:0; display:block }
+.ytcaption{ font-size:13px; color:var(--muted); padding:8px 10px 10px }
+
+.update-bar{
+  position:fixed; left:50%; transform:translateX(-50%);
+  bottom:12px; background:var(--card); border:1px solid var(--line);
+  color:inherit; padding:8px 12px; border-radius:12px; display:flex; gap:10px; align-items:center;
 }
-.ayah-card.shownum .anum,
-.ayah-card.reading .anum{ opacity:.85 }
-.ayah-card.reading{ outline: 2px solid var(--reading); background: color-mix(in oklab, var(--reading) 20%, var(--card2)); }
-
-.basmala{ border-style:dashed }
-.bsm-text{ margin:8px 0 2px; font-style:italic; color:var(--muted) }
-
-.foot{
-  border-top:1px solid var(--line);
-  padding:14px 16px; color:var(--muted); font-size:13px; text-align:center;
-}
-
-/* küçük ekran iyileştirme */
-@media (max-width:480px){
-  .hero{ grid-template-columns: 1fr; }
-}
-/* Loading kutusunu tamamen gizle */
-.loading-box { display: none !important; }
-
-/* Kart başlığı ve alt satır renkleri — görünürlüğü garanti et */
-.card .head-text .title { color: var(--fg) !important; }
-.card .head-text .sub   { color: var(--muted) !important; }
-/* YouTube embed kartı */
-.ytwrap { background: var(--card2); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin: 12px 0; }
-.ytwrap iframe { width: 100%; aspect-ratio: 16 / 9; border: 0; display: block; }
-.ytcaption { font-size: 13px; color: var(--muted); padding: 8px 10px 10px; }
