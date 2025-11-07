@@ -55,7 +55,9 @@
     </small>
   </footer>
 
-  <script src="app.js?v=13" defer></script>
+<!-- index.html içindeki script satırını da cache-bust için böyle güncelle -->
+<script src="app.js?v=20251107" defer></script>
+
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js');
