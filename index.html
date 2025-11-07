@@ -5,80 +5,53 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Meal2</title>
 
-  <!-- Basit stiller -->
+  <meta name="theme-color" content="#0b0d10" />
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css" />
 
-  <style>
-    /* İskelet için min. stiller (styles.css yoksa da çalışsın) */
-    :root{
-      --bg:#0b0d10; --fg:#e6e6e6; --muted:#a7abb3;
-      --card:#12151b; --card2:#171b22; --line:#2a2f39; --accent:#58a6ff;
-    }
-    *{ box-sizing:border-box }
-    body{ margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background:var(--bg); color:var(--fg); }
-    header{ position:sticky; top:0; z-index:10; background:rgba(11,13,16,.85); backdrop-filter: blur(6px);
-      border-bottom:1px solid var(--line); padding:12px 16px; display:flex; gap:12px; align-items:center }
-    h1{ font-size:18px; margin:0; }
-    #crumbs{ margin-left:auto; font-size:13px; color:var(--muted) }
-    a{ color:var(--accent); text-decoration:none }
-    a:hover{ text-decoration:underline }
-
-    main{ max-width:980px; margin:20px auto; padding:0 16px; }
-
-    /* Liste görünümü */
-    #surahList{ }
-    #surahItems{ list-style:none; padding:0; margin:0; display:grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap:10px; }
-    .surah-item{ width:100%; text-align:left; background:var(--card); border:1px solid var(--line);
-      border-radius:12px; padding:12px; color:inherit; cursor:pointer; }
-    .surah-item b{ display:block; font-size:15px; margin-bottom:6px }
-    .surah-item span{ font-size:12px; color:var(--muted) }
-
-    /* Sûre görünümü */
-    #surahView{ display:none }
-    #surahTitle{ font-size:20px; margin:8px 0 14px }
-    .toolbar{ display:flex; gap:8px; align-items:center; margin-bottom:12px }
-    .toolbar button, .toolbar input[type="range"]{ background:var(--card); border:1px solid var(--line);
-      color:inherit; border-radius:10px; padding:8px 10px; }
-    .ayah-card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin:10px 0 }
-    .ayah-card .ayah-num{ font-weight:600; opacity:.8; margin-bottom:6px }
-    .meal-note{ color:var(--muted); font-size:13px; margin-top:8px }
-
-    /* YouTube */
-    .ytwrap{ background:var(--card2); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin:12px 0 }
-    .ytwrap iframe{ width:100%; aspect-ratio:16/9; border:0; display:block }
-    .ytcaption{ font-size:13px; color:var(--muted); padding:8px 10px 10px }
-  </style>
+  <noscript>Bu site JavaScript gerektirir.</noscript>
 </head>
 <body>
-  <header>
-    <button id="backBtn" title="Ana sayfa" style="background:var(--card);border:1px solid var(--line);color:inherit;border-radius:10px;padding:8px 10px;cursor:pointer;">← Geri</button>
-    <h1>Meal2</h1>
-    <div id="crumbs"></div>
+  <header class="topbar">
+    <button id="backBtn" class="btn">← Geri</button>
+    <h1 class="brand">Meal2</h1>
+    <div class="grow"></div>
+    <button id="themeToggle" class="btn" title="Tema">Tema</button>
   </header>
 
-  <main>
-    <!-- Sûre Listesi -->
+  <main class="container">
+    <!-- Ana sayfa (sûre listesi) -->
     <section id="surahList" aria-label="Sûre Listesi">
-      <ul id="surahItems"></ul>
+      <p id="listInfo" class="muted"></p>
+      <ul id="surahItems" class="grid"></ul>
     </section>
 
-    <!-- Sûre Görünümü -->
-    <section id="surahView" aria-label="Sûre">
+    <!-- Sûre görünümü -->
+    <section id="surahView" aria-label="Sûre" hidden>
+      <nav class="crumbs" id="crumbs"></nav>
       <div class="toolbar">
-        <div id="surahTitle">Sûre</div>
-        <div style="margin-left:auto; display:flex; gap:8px; align-items:center">
-          <!-- (Opsiyonel) TTS kontrolleri; app.js bunlar varsa bağlanıyor -->
-          <button id="ttsPlay" title="Sesli oku">▶︎</button>
-          <button id="ttsStop" title="Durdur">■</button>
-          <label style="font-size:12px;color:var(--muted)">Hız <input id="ttsRate" type="range" min="0.6" max="1.4" step="0.05" value="0.9" /></label>
+        <h2 id="surahTitle" class="title"></h2>
+        <div class="grow"></div>
+        <div class="tts">
+          <button id="ttsPlay" class="btn">▶︎</button>
+          <button id="ttsPause" class="btn">⏸</button>
+          <button id="ttsResume" class="btn">⏵</button>
+          <button id="ttsStop" class="btn">■</button>
+          <label class="muted">Hız
+            <input id="ttsRate" type="range" min="0.6" max="1.4" step="0.05" value="0.95">
+          </label>
         </div>
       </div>
       <div id="ayahList"></div>
     </section>
   </main>
 
-  <!-- ÖNEMLİ: cache-bust parametresi ekle -->
+  <!-- Güncelleme barı (SW yeni sürüm hazırsa) -->
+  <div id="updateBar" class="update-bar" hidden>
+    Yeni sürüm hazır. <button id="updateReload" class="btn">Yenile</button>
+  </div>
+
+  <!-- Cache-bust için versiyon parametresi -->
   <script src="app.js?v=20251108" defer></script>
 </body>
 </html>
