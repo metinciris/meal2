@@ -19,6 +19,49 @@ function urlJoin(...segs){ return new URL(segs.join('/').replace(/\/+/g,'/'), lo
 
 const DATA_URL = urlJoin(basePath(), 'data/normalized.json');
 
+// YouTube embed verisi
+const EMBEDS_URL = urlJoin(basePath(), 'data/embeds.json');
+let EMBEDS = null; // { bySurah: { "1":[{after,url,start,title}] }, lastUpdated }
+
+// "1:23:45", "12:34", "t=1m15s" veya "230" → saniye
+function hmsToSec(hms){
+  if (typeof hms === 'number') return hms|0;
+  if (!hms) return 0;
+  if (/^\d+$/.test(hms)) return parseInt(hms,10);
+  const m = String(hms).match(/(?:(\d+):)?(\d+):(\d+)/); // hh:mm:ss | mm:ss
+  if (m){ const hh=+(m[1]||0), mm=+m[2], ss=+m[3]; return hh*3600+mm*60+ss; }
+  const t = String(hms).replace(/^t=/i,'');
+  const mh = t.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/i);
+  if (mh) return (+(mh[1]||0)*3600)+(+(mh[2]||0)*60)+(+(mh[3]||0));
+  return 0;
+}
+
+// YouTube URL → { id, startFromUrl }
+function parseYouTube(url){
+  try{
+    const u = new URL(url);
+    let id = '';
+    if (u.hostname.includes('youtu.be'))        id = u.pathname.slice(1);
+    else if (u.searchParams.get('v'))           id = u.searchParams.get('v');
+    else { const m = u.pathname.match(/\/embed\/([^/?#]+)/); if (m) id = m[1]; }
+    let start = 0;
+    if (u.searchParams.get('start')) start = parseInt(u.searchParams.get('start'),10)||0;
+    if (u.searchParams.get('t'))     start = hmsToSec(u.searchParams.get('t')) || start;
+    return { id, startFromUrl:start };
+  }catch(e){ return { id:'', startFromUrl:0 }; }
+}
+
+// iframe oluşturucu
+function buildYT(srcId, startSec){
+  const s = Math.max(0, startSec|0);
+  const src = `https://www.youtube-nocookie.com/embed/${srcId}?start=${s}&autoplay=0&rel=0&modestbranding=1`;
+  const wrap = document.createElement('div');
+  wrap.className = 'ytwrap';
+  wrap.innerHTML = `<iframe loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen src="${src}"></iframe>`;
+  return wrap;
+}
+
+
 /* Sûre adları ve âyet sayıları */
 const NAMES = [
   '', 'Fâtiha','Bakara','Âl-i İmrân','Nisâ','Mâide','En’âm','A’râf','Enfâl','Tevbe','Yûnus','Hûd',
@@ -82,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#ttsRate')?.addEventListener('input', e => { tts.rate = parseFloat(e.target.value || '0.8'); });
 
   try {
-    await Promise.all([ loadData(), initTTS(), loadTTSDict() ]);
+    await Promise.all([ loadData(), loadEmbeds(), initTTS(), loadTTSDict() ]);
     renderHome();
   } catch (e) {
     console.error(e);
@@ -99,6 +142,12 @@ async function loadData(){
   if (!res.ok) throw new Error(`normalized.json ${res.status}`);
   DATA = await res.json();
   $('#lastUpdated') && ($('#lastUpdated').textContent = formatDateTR(DATA.lastUpdated));
+}
+async function loadEmbeds(){
+  try{
+    const res = await fetch(EMBEDS_URL, { cache: 'no-store' });
+    if (res.ok) EMBEDS = await res.json();
+  }catch(e){}
 }
 
 /* ===================== HOME (sûre listesi) ===================== */
@@ -270,6 +319,26 @@ function renderSurah(s){
     });
 
     fr.appendChild(card);
+    // Bu âyetten SONRA gelen YouTube embed'leri ekle
+const list = EMBEDS?.bySurah?.[String(s)] || [];
+for (const e of list){
+  if ((e.after|0) === a){ // 'a' mevcut âyet numarası
+    const { id } = parseYouTube(e.url || '');
+    // Issue'da start boşsa URL'deki t=/start= kullanılır; doluysa alan öncelikli
+    const start = (e.start|0) || 0;
+    if (id){
+      const node = buildYT(id, start);
+      if (e.title){
+        const cap = document.createElement('div');
+        cap.className = 'ytcaption';
+        cap.textContent = e.title;
+        node.appendChild(cap);
+      }
+      fr.appendChild(node); // kartın ARDINDAN ekle
+    }
+  }
+}
+
   }
 
   wrap.replaceChildren(fr);
