@@ -1,0 +1,19 @@
+name: "[BulkYouTube] Toplu embed"
+description: Bir sûrede birden çok gömme satır gir
+title: "[BulkYouTube] Sûre {{ inputs.sure }}"
+labels: ["youtube-bulk"]
+body:
+  - type: input
+    id: sure
+    attributes: { label: "Sûre (1-114)", placeholder: "2" }
+    validations: { required: true }
+  - type: textarea
+    id: blob
+    attributes:
+      label: "Satır satır veri"
+      description: "Biçim: after | url | (opsiyonel start) | (opsiyonel başlık)"
+      placeholder: |
+        0 | https://youtu.be/ID?t=45 | | Giriş videosu
+        3 | https://www.youtube.com/watch?v=ID2 | 2:30 | Tefsir kesiti
+        5 | https://youtu.be/ID3
+    validations: { required: true }
