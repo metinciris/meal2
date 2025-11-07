@@ -83,23 +83,42 @@
   let currentSurah = 1;
 
   /* --------- PWA: SW kaydı ve güncelleme barı --------- */
-  async function registerSW(){
-    if (!('serviceWorker' in navigator)) return;
-    try{
-      const reg = await navigator.serviceWorker.register('service-worker.js?v='+APP_VERSION, { scope: './' });
-      navigator.serviceWorker.addEventListener('message', (event)=>{
-        if (event.data === 'SW_UPDATED'){
-          const bar = $('#updateBar'); if (bar) bar.hidden=false;
+async function registerSW(){
+  if (!('serviceWorker' in navigator)) return;
+  try{
+    const reg = await navigator.serviceWorker.register('service-worker.js?v='+APP_VERSION, { scope: './' });
+
+    // 1) yeni SW bulunduğunda (updatefound) ve 'installed' olduğunda, eğer sayfada halihazırda bir controller varsa → güncelleme var
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', () => {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          const bar = document.getElementById('updateBar');
+          if (bar) bar.hidden = false;
         }
       });
-      const btn = $('#updateReload');
-      if (btn) btn.onclick = async ()=>{
-        if (reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
-        // kısa gecikme → tam yenile
-        setTimeout(()=>location.reload(), 300);
-      };
-    }catch(e){ console.warn('SW kayıt hatası', e); }
+    });
+
+    // 2) "Yenile" butonu: waiting varsa hemen SKIP_WAITING iste
+    const btn = document.getElementById('updateReload');
+    if (btn) btn.onclick = () => {
+      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      // controller değişince otomatik reload
+    };
+
+    // 3) controller değiştiyse (yeni SW devreye girdi) sayfayı bir kez tazele
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded) return;
+      reloaded = true;
+      location.reload();
+    });
+  }catch(e){
+    console.warn('SW kayıt hatası', e);
   }
+}
+
 
   /* --------- tema --------- */
   function applyTheme(mode){
