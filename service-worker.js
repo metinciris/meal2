@@ -23,9 +23,7 @@ self.addEventListener('activate', (evt)=>{
       if (!k.endsWith(CACHE_VERSION)) return caches.delete(k);
     }));
     await self.clients.claim();
-    // Yeni SW aktif → bildirim (isteğe bağlı)
-    const clients = await self.clients.matchAll({ type:'window' });
-    for (const client of clients){ client.postMessage('SW_UPDATED'); }
+
   })());
 });
 
