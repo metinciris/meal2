@@ -1,0 +1,25 @@
+name: "[YouTube] Tekli embed"
+description: Bir sûre içinde belirli bir âyetten sonra YouTube gömme
+title: "[YouTube] Sûre {{ inputs.sure }} : after {{ inputs.after }}"
+labels: ["youtube"]
+body:
+  - type: input
+    id: sure
+    attributes: { label: "Sûre (1-114)", placeholder: "2" }
+    validations: { required: true }
+  - type: input
+    id: after
+    attributes: { label: "Hangi âyetten SONRA gömülsün? (0 = sûrenin başı)", placeholder: "3" }
+    validations: { required: true }
+  - type: input
+    id: url
+    attributes: { label: "YouTube URL", placeholder: "https://youtu.be/..." }
+    validations: { required: true }
+  - type: input
+    id: start
+    attributes:
+      label: "Başlangıç (opsiyonel)"
+      description: "saniye (230) veya hh:mm:ss (01:12:30) veya t=1m15s biçimi"
+  - type: input
+    id: title
+    attributes: { label: "Başlık (opsiyonel)", placeholder: "Tefsir kesiti" }
