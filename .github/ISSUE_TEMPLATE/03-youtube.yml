@@ -9,7 +9,7 @@ body:
     validations: { required: true }
   - type: input
     id: after
-    attributes: { label: "Hangi âyetten SONRA gömülsün? (0 = sûrenin başı)", placeholder: "3" }
+    attributes: { label: "Hangi âyetten SONRA? (0 = sûrenin başı)", placeholder: "3" }
     validations: { required: true }
   - type: input
     id: url
@@ -19,7 +19,7 @@ body:
     id: start
     attributes:
       label: "Başlangıç (opsiyonel)"
-      description: "saniye (230) veya hh:mm:ss (01:12:30) veya t=1m15s biçimi"
+      description: "saniye (230) / mm:ss / hh:mm:ss / t=1m15s"
   - type: input
     id: title
     attributes: { label: "Başlık (opsiyonel)", placeholder: "Tefsir kesiti" }
